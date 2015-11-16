@@ -86,8 +86,11 @@ float leftChData_hf_prev[LATENCY_LENGTH]	={0};
 float rightChData_hf_prev[LATENCY_LENGTH] ={0}	;
 
 float compressor_ratio = 0;
-uint32_t ctl = 0 ;
 
+uint8_t vb_on = 0;
+uint8_t loopback = 0 ;
+uint8_t lf_path = 1 ;
+uint8_t hf_path = 1 ;
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        my_float_memcpy                                                                          */
 /*---------------------------------------------------------------------------------------------------------*/
@@ -348,7 +351,7 @@ static void main_thread_func (void * param)
 			pRxBuf = xRxMessage.rxBuffer;
 			pTxBuf = xRxMessage.txBuffer;
 
-			if(4==ctl)//transparent mode
+			if(loopback)//transparent mode
 			{
 				for(i = 0 ; i < I2S_BUFF_LEN ; i++)
 				{
@@ -386,7 +389,7 @@ static void main_thread_func (void * param)
 
 #if 1
 			/******** LF path **********/
-			if((0==ctl) || (1==ctl))
+			if(lf_path)
 			{
 				pTmpBuf1 = leftChData_step_1 ;
 				pTmpBuf2 = leftChData_step_0 ;
@@ -399,22 +402,25 @@ static void main_thread_func (void * param)
 				DSP_FUNC_1CH_IN_1CH_OUT(&lpf_filter,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
 
 				/********  VB  ************/
-#if 1
-				DSP_FUNC_1CH_IN_1CH_OUT(&vb_hpf_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
-
-				vb_dsp(NULL ,  2, 1 , I2S_BUFF_LEN ,
-						&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH] ,
-						&leftChData_step_2[LATENCY_LENGTH] , NULL);
-
-				DSP_FUNC_1CH_IN_1CH_OUT(&vb_final_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
-#else
-				pTmpBuf1 = leftChData_step_1 ;
-				pTmpBuf2 = leftChData_step_2 ;
-				for(i = 0 ; i < (I2S_BUFF_LEN  + LATENCY_LENGTH); i++)
+				if (vb_on)
 				{
-					*pTmpBuf1++ = 6 * (*pTmpBuf2++) ;
+					DSP_FUNC_1CH_IN_1CH_OUT(&vb_hpf_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
+
+					vb_dsp(NULL ,  2, 1 , I2S_BUFF_LEN ,
+							&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH] ,
+							&leftChData_step_2[LATENCY_LENGTH] , NULL);
+
+					DSP_FUNC_1CH_IN_1CH_OUT(&vb_final_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
 				}
-#endif
+				else
+				{
+					pTmpBuf1 = leftChData_step_1 ;
+					pTmpBuf2 = leftChData_step_2 ;
+					for(i = 0 ; i < (I2S_BUFF_LEN  + LATENCY_LENGTH); i++)
+					{
+						*pTmpBuf1++ = 6 * (*pTmpBuf2++) ;
+					}
+				}
 				/******* end of VB   *********/
 
 
@@ -431,12 +437,12 @@ static void main_thread_func (void * param)
 #if 1
 			/********** HF path *********/
 
-			if((0==ctl) || (2==ctl))
+			if(hf_path)
 			{
 				DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_left,&leftChData_step_0[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
 				DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_right,&rightChData_step_0[LATENCY_LENGTH],&rightChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
 			}
-			else if(1==ctl)
+			else
 			{
 				my_float_memset(leftChData_step_1 , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
 				my_float_memset(rightChData_step_1 , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);

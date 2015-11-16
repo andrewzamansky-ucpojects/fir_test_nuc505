@@ -18,8 +18,8 @@
 #include "os_wrapper.h"
 
 
-#define USE_EXTERNAL_CODEC	1
-#define USE_MASTER_MODE		1
+#define USE_EXTERNAL_CODEC	0// for external I2S
+#define USE_MASTER_MODE		1// relevant for external I2S
 
 
 #endif /* */

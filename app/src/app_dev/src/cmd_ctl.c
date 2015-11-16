@@ -13,8 +13,10 @@
 #include "shell_api.h"
 
 
-extern uint32_t ctl ;
-
+extern uint8_t loopback ;
+extern uint8_t vb_on;
+extern uint8_t lf_path;
+extern uint8_t hf_path;
 /*
  * Subroutine:  do_set_comressor
  *
@@ -27,17 +29,34 @@ extern uint32_t ctl ;
  */
 int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
+	uint8_t val;
 
 
-
-	if(argc < 2)
+	if(argc < 3)
 	{
 		SHELL_REPLY_STR("syntax err\n");
 		return 1;
 	}
 
 
-	ctl = (float)atoi(argv[1]);
+	val = (float)atoi(argv[2]);
+
+	if(0 == strcmp(argv[1],"vb"))
+	{
+		vb_on = val;
+	}
+	else if(0 == strcmp(argv[1],"loopback"))
+	{
+		loopback = val;
+	}
+	else if(0 == strcmp(argv[1],"lf_path"))
+	{
+		lf_path = val;
+	}
+	else if(0 == strcmp(argv[1],"hf_path"))
+	{
+		hf_path = val;
+	}
 
 	return 0;
 }
