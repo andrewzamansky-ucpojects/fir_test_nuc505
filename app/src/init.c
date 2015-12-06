@@ -21,6 +21,9 @@
 
 #include "gpio.h"
 
+#include "cortexM_systick_api.h"
+#include "heartbeat_api.h"
+
 /*-----------------------------------------------------------*/
 
 

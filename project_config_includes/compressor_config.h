@@ -19,6 +19,7 @@
 #include "PRINTF_api.h"
 //#include "os_wrapper.h"
 
+#define COMPRESSOR_CONFIG_NUM_OF_DYNAMIC_INSTANCES 	2
 #define COMPRESSOR_CONFIG_CHUNK_SIZE	64
 
 

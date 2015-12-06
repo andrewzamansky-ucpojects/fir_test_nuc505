@@ -16,6 +16,8 @@
 
 #include "NUC505Series.h"
 #include "gpio.h"
+#include "heartbeat_api.h"
+#include "hw_timer_api.h"
 
 /*-----------------------------------------------------------*/
 
@@ -66,7 +68,6 @@ void vApplicationIdleHook()
 
 void heartbeat_callback(void)
 {
-	uint32_t cpu_usage;
 	static uint8_t tick=0;
 	if(0 == tick)
 	{
@@ -79,13 +80,14 @@ void heartbeat_callback(void)
 
 	//PC3_DOUT = tick;
 	tick = 1 - tick;
-	DEV_IOCTL_1_PARAMS(heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
 
 	// !!!! DONT USE PRINTF_DBG . IT CAN PUT IDLE TASK TO WAIT STATE . THIS IS WRONG !!
 	// REMOVE THESE LINE AS SOON AS POSSIBLE
-#if 1
+#if 0
 	{
 		uint8_t cpu_usage_int_part,cpu_usage_res_part;
+		uint32_t cpu_usage;
+		DEV_IOCTL_1_PARAMS(heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
 		cpu_usage_int_part = cpu_usage / 1000;
 		cpu_usage_res_part = cpu_usage - cpu_usage_int_part;
 		PRINTF_DBG("cpu usage = %d.%03d%% \n", cpu_usage_int_part , cpu_usage_res_part);

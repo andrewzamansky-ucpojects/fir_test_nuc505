@@ -13,6 +13,8 @@ INCLUDE_DIR += $(EXTERNAL_SOURCE_ROOT_DIR)/u-boot/include
 
 SRC = app_dev.c
 SRC += cmd_set_comressor.c
+SRC += cmd_set_cutoff.c
+SRC += cmd_set_vb_volume.c
 SRC += cmd_ctl.c
 
 SPEED_CRITICAL_FILES += app_dev.c
