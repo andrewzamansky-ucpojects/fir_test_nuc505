@@ -400,7 +400,6 @@ static void main_thread_func (void * param)
 				}
 				/********* end of LF path    **********/
 
-	#if 1
 				/********** HF path *********/
 
 				if(hf_path)
@@ -421,7 +420,7 @@ static void main_thread_func (void * param)
 				my_float_memcpy_2_buffers( leftChData_step_2 , leftChData_hf_prev,
 						rightChData_step_2 , rightChData_hf_prev , LATENCY_LENGTH);
 				my_float_memcpy_2_buffers( leftChData_hf_prev , &leftChData_step_2[I2S_BUFF_LEN],
-						rightChData_hf_prev , &leftChData_step_2[I2S_BUFF_LEN] , LATENCY_LENGTH);
+						rightChData_hf_prev , &rightChData_step_2[I2S_BUFF_LEN] , LATENCY_LENGTH);
 
 
 				/********* end of HF path  *********/
@@ -438,15 +437,11 @@ static void main_thread_func (void * param)
 				}
 				/********** end of collecting LF and HF pathes together  *********/
 
-	#else
-				my_float_memcpy(leftChData_step_2 , VB_data_out , I2S_BUFF_LEN + LATENCY_LENGTH );
-				my_float_memcpy(rightChData_step_2 , VB_data_out , I2S_BUFF_LEN + LATENCY_LENGTH );
-	#endif
+
 
 	#else  // without X.O
-
 				DSP_FUNC_1CH_IN_1CH_OUT(&leftChanelEQ,leftChData_step_0,leftChData_step_2,I2S_BUFF_LEN);
-				DSP_FUNC_1CH_IN_1CH_OUT(&rightChanelEQ,leftChData_step_0,rightChData_step_2,I2S_BUFF_LEN);
+				DSP_FUNC_1CH_IN_1CH_OUT(&rightChanelEQ,rightChData_step_0,rightChData_step_2,I2S_BUFF_LEN);
 	#endif //   X.O
 
 				if(0 != compressor_ratio)
@@ -536,7 +531,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			/* Create an application thread */
 
 			set_band_biquads.Fc = 300;
-			set_band_biquads.QValue = 0.707;//0.836;//0.7;
+			set_band_biquads.QValue = 0.5;//0.836;//0.707;
 			set_band_biquads.Gain = 1;
 
 			equalizer_api_init_dsp_descriptor(&lpf_filter);
@@ -545,7 +540,6 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			set_band_biquads.band_num = 0;
 			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_1_POLE;
-			set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
 			set_band_biquads.band_num = 1;
 			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&lpf_filter , IOCTL_DEVICE_START );
@@ -556,7 +550,6 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			set_band_biquads.band_num = 0;
 			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
 			set_band_biquads.band_num = 1;
 			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&hpf_filter_left , IOCTL_DEVICE_START );
@@ -567,7 +560,6 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			set_band_biquads.band_num = 0;
 			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
 			set_band_biquads.band_num = 1;
 			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&hpf_filter_right , IOCTL_DEVICE_START );
@@ -609,7 +601,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&vb_final_filter , IOCTL_DEVICE_START );
 #else
-			set_band_biquads.QValue = 0.707;//0.836;//0.7;
+			set_band_biquads.QValue = 0.5;//0.836;//0.707;
 			set_band_biquads.Gain = 1;
 			equalizer_api_init_dsp_descriptor(&vb_final_filter);
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)7) );
@@ -620,6 +612,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
 			set_band_biquads.band_num = 1;
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+			set_band_biquads.QValue = 0.707;//0.836;//0.707;
 			set_band_biquads.Fc = 30;
 			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
 			set_band_biquads.band_num = 2;
