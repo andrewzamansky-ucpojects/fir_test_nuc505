@@ -137,7 +137,7 @@ void my_float_memset(float *dest ,float val , size_t len)
 
 
 #define COMPR_ATTACK	0.998609f
-#define COMPR_REALESE	0.987032f
+#define COMPR_REALESE	 0.987032f
 
 #define g1	15.0f
 #define g2	1.0f
