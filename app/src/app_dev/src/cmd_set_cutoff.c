@@ -48,13 +48,13 @@ int do_set_cutoff (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 
 	set_band_biquads.Fc = (float)atof(argv[1]);
-	set_band_biquads.QValue = 0.5;
+	set_band_biquads.QValue = 1;
 	set_band_biquads.Gain = 1;
 
 	set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
 	set_band_biquads.band_num = 0;
 	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
+	set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_1_POLE;
 	set_band_biquads.band_num = 1;
 	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 

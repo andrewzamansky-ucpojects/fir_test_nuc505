@@ -154,7 +154,7 @@ void my_float_memset(float *dest ,float val , size_t len)
 #define POST_CLU_GAIN	1
 #define HARMONICS_GAIN	2.0
 
-float vb_volume = 1;
+float vb_volume = -1;
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        vb_dsp                                                                          */
@@ -406,6 +406,7 @@ static void main_thread_func (void * param)
 				{
 					DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_left,&leftChData_step_0[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
 					DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_right,&rightChData_step_0[LATENCY_LENGTH],&rightChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
+
 				}
 				else
 				{
@@ -426,14 +427,16 @@ static void main_thread_func (void * param)
 				/********* end of HF path  *********/
 
 
-				/********** collecting LF and HF pathes together  *********/
+				/********** collecting LF and HF pathes together with phase change on HF *********/
 				pTmpBuf1 = leftChData_step_2 ;
 				pTmpBuf2 = rightChData_step_2 ;
 				pTmpBuf3 = VB_data_out ;
 				for(i = 0 ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
 				{
+//					*pTmpBuf1 = -*pTmpBuf1;
+//					*pTmpBuf2 = -*pTmpBuf2;
 					(*pTmpBuf1++) += (*pTmpBuf3);
-					(*pTmpBuf2++) += (*pTmpBuf3++);
+					(*pTmpBuf2++) += (*pTmpBuf3++) ;
 				}
 				/********** end of collecting LF and HF pathes together  *********/
 
@@ -531,7 +534,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			/* Create an application thread */
 
 			set_band_biquads.Fc = 300;
-			set_band_biquads.QValue = 0.5;//0.836;//0.707;
+			set_band_biquads.QValue = 1;//0.836;//0.707;
 			set_band_biquads.Gain = 1;
 
 			equalizer_api_init_dsp_descriptor(&lpf_filter);
@@ -601,7 +604,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&vb_final_filter , IOCTL_DEVICE_START );
 #else
-			set_band_biquads.QValue = 0.5;//0.836;//0.707;
+			set_band_biquads.QValue = 1;//0.836;//0.707;
 			set_band_biquads.Gain = 1;
 			equalizer_api_init_dsp_descriptor(&vb_final_filter);
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)7) );
