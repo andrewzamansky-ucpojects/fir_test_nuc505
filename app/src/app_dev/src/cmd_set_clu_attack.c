@@ -12,8 +12,11 @@
 #include <command.h>
 #include "shell_api.h"
 
+#include "equalizer_api.h"
+#include "common_dsp_api.h"
 
-extern float compressor_ratio ;
+extern float COMPR_REALESE ;
+
 
 /*
  * Subroutine:  do_set_comressor
@@ -25,7 +28,7 @@ extern float compressor_ratio ;
  * Return:      None
  *
  */
-int do_set_comressor (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_set_clu_attack (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
 
@@ -37,14 +40,14 @@ int do_set_comressor (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 
-	compressor_ratio = (float)atof(argv[1]);
+
+	COMPR_REALESE = (float)atof(argv[1]);
 
 	return 0;
 }
 
 U_BOOT_CMD(
-	set_comressor,     255,	0,	do_set_comressor,
-	"set_comressor val",
+	set_clu_attack,     255,	0,	do_set_clu_attack,
+	"set_clu_attack val ",
 	"info   - \n"
 );
-

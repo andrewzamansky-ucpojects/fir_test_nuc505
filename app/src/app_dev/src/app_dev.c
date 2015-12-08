@@ -136,8 +136,10 @@ void my_float_memset(float *dest ,float val , size_t len)
 
 
 
-#define COMPR_ATTACK	0.998609f
-#define COMPR_REALESE	 0.987032f
+//#define COMPR_ATTACK	0.998609f
+//#define COMPR_REALESE	 0.987032f
+float COMPR_ATTACK =	0.998609;
+float COMPR_REALESE	= 0.987032;
 
 #define g1	15.0f
 #define g2	1.0f
@@ -152,10 +154,10 @@ void my_float_memset(float *dest ,float val , size_t len)
 //#define COMPR_REALESE_ADJUSTED	(COMPR_REALESE / ENVELOP_FOLLOWER_SAMPLE_RATE)
 
 #define POST_CLU_GAIN	1
-#define HARMONICS_GAIN	2.0
+//#define HARMONICS_GAIN	2.0
 
-float vb_volume = -1;
-
+float vb_volume = 1.3;
+float HARMONICS_GAIN = 1.0 ;
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        vb_dsp                                                                          */
 /*                                                                                                         */
@@ -533,7 +535,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 
 			/* Create an application thread */
 
-			set_band_biquads.Fc = 300;
+			set_band_biquads.Fc = 100;
 			set_band_biquads.QValue = 1;//0.836;//0.707;
 			set_band_biquads.Gain = 1;
 
