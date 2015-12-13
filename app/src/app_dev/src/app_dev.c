@@ -155,9 +155,11 @@ float COMPR_REALESE	= 0.987032;
 
 #define POST_CLU_GAIN	1
 //#define HARMONICS_GAIN	2.0
+#define HU1_A	0.0125f
+#define HU1_B	0.08215f
 
 float vb_volume = 1.3;
-float HARMONICS_GAIN = 1.0 ;
+float HARMONICS_GAIN = 2.0 ;
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        vb_dsp                                                                          */
 /*                                                                                                         */
@@ -175,34 +177,22 @@ void vb_dsp(const void * const aHandle ,
 		float *apCh1Out , float *apCh2Out)
 {
 
-	static int print_count=0;
-	float max_val ;
-//	static float prev_ratio = 1;
 	float curr_ratio = 1;
-//	static int threshold_detectd = 0;
-//	uint32_t accomulator=0;
-	uint8_t usePreviousRatio;
-	uint16_t i,j,k;
-//	float threshold = INSTANCE(aHandle)->threshold;
-//	float reverse_ratio = INSTANCE(aHandle)->reverse_ratio;
+	uint16_t i;
 	float threshold = 0.01;// * ((uint16_t)0x7fff) ;
 	float reverse_ratio = 0.5;
 	uint8_t envelope_folower_sample_count =ENVELOP_FOLLOWER_SAMPLE_RATE;
-
-	static float saved_yn1=0,saved_y1n1=0;
+	static float saved_yn1=0,saved_y1n1;
 	float yn1,y1n1;
 	float y1;
 
-	static float saved_prev_y =0;
-	float prev_y;
+
 	float curr_y ;
 
 	yn1 = saved_yn1;
-	y1n1=saved_y1n1;
-	prev_y = saved_prev_y;
-	max_val = threshold ;
-	j = 0;
-	usePreviousRatio = 1;
+	y1n1 = saved_y1n1;
+
+
 	for(i = 0 ; i < data_len ; i++)
 	{
 		float tmp,tmp1,abs_result;
@@ -211,9 +201,9 @@ void vb_dsp(const void * const aHandle ,
 		curr_y = apCh1In[i]/ 0x7fff ;
 //		curr_y = 6 * curr_y;
 
-		abs_result = fabs(curr_y);
 		if(ENVELOP_FOLLOWER_SAMPLE_RATE == envelope_folower_sample_count )
 		{
+			abs_result = fabs(curr_y);
 			tmp = abs_result;
 			tmp1 = COMPR_REALESE_ADJUSTED * y1n1 + (1 - COMPR_REALESE_ADJUSTED) * tmp;
 			if(tmp < tmp1)
@@ -229,22 +219,34 @@ void vb_dsp(const void * const aHandle ,
 			yn1=tmp;
 			curr_ratio = A/(B+tmp);
 			envelope_folower_sample_count = 1;
+
+			// harmonic creations
+			if(curr_y < yn1)
+			{
+				tmp = HU1_B;
+			}
+			else
+			{
+				tmp = HU1_A;
+			}
+			yn1 = (1-tmp)*yn1;
+			yn1 += tmp * curr_y ;
+
 		}
 		envelope_folower_sample_count++;
 
 		curr_y = curr_ratio * curr_y ;
 //		curr_y = curr_y * POST_CLU_GAIN;
-		abs_result = HARMONICS_GAIN * abs_result;
-		curr_y += abs_result ;
+		tmp = HARMONICS_GAIN * yn1;
+		curr_y += tmp ;
 		curr_y = curr_y * vb_volume;
 		apCh1Out[ i ] =   curr_y * 0x7fff;
 
 
 	}
 
-	saved_prev_y = prev_y ;
 	saved_yn1 =yn1 ;
-	saved_y1n1 = y1n1;
+	saved_y1n1 =y1n1 ;
 
 
 }
