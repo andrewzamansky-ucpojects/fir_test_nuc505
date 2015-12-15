@@ -37,7 +37,7 @@ int do_set_vb_volume (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 
-	vb_volume = (float)atof(argv[1]);
+	vb_volume = (float)atof(argv[1]) /100 * 0.85;
 
 	return 0;
 }

@@ -15,13 +15,12 @@
 #include "equalizer_api.h"
 #include "common_dsp_api.h"
 
-extern dsp_descriptor_t lpf_filter;
-//extern dsp_descriptor_t vb_hpf_filter;
-extern dsp_descriptor_t vb_final_filter;
+
+extern float cutoff_freq ;
 
 
-extern dsp_descriptor_t hpf_filter_left;
-extern dsp_descriptor_t hpf_filter_right;
+
+extern uint8_t app_dev_set_cuttof();
 
 /*
  * Subroutine:  do_set_comressor
@@ -37,7 +36,6 @@ int do_set_cutoff (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
 
-	set_band_biquads_t  set_band_biquads;
 
 	if(argc < 2)
 	{
@@ -47,38 +45,9 @@ int do_set_cutoff (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 
 
-	set_band_biquads.Fc = (float)atof(argv[1]);
-	set_band_biquads.QValue = 1;
-	set_band_biquads.Gain = 1;
+	cutoff_freq = (float)atof(argv[1]);
+	app_dev_set_cuttof();
 
-	set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
-	set_band_biquads.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_1_POLE;
-	set_band_biquads.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	set_band_biquads.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	set_band_biquads.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	set_band_biquads.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	set_band_biquads.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-
-	set_band_biquads.Fc = set_band_biquads.Fc * 0.8;
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	set_band_biquads.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	set_band_biquads.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 
 	return 0;
 }

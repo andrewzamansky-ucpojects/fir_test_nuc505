@@ -29,6 +29,7 @@
 #include "I2S_nuc505_api.h"
 #include "timer_api.h"
 #include "heartbeat_api.h"
+#include "math.h"
 
 /********  defines *********************/
 
@@ -92,6 +93,7 @@ float leftChData_hf_prev[LATENCY_LENGTH]	={0};
 float rightChData_hf_prev[LATENCY_LENGTH] ={0}	;
 
 float compressor_ratio = 0;
+float cutoff_freq = 100;
 
 TIMER_API_CREATE_STATIC_DEV(app_timer_inst,"httpt" ,systick_dev_inst );
 static pdev_descriptor_const  timer_device = &app_timer_inst;
@@ -138,8 +140,8 @@ void my_float_memset(float *dest ,float val , size_t len)
 
 //#define COMPR_ATTACK	0.998609f
 //#define COMPR_REALESE	 0.987032f
-float COMPR_ATTACK =	0.998609;
-float COMPR_REALESE	= 0.987032;
+float COMPR_ATTACK =	0.0001f;
+float COMPR_REALESE	= 0.9999f;
 
 #define g1	15.0f
 #define g2	1.0f
@@ -147,19 +149,23 @@ float COMPR_REALESE	= 0.987032;
 #define B	(b1/(1-b1))
 #define A	(g1*B)
 
-#define ENVELOP_FOLLOWER_SAMPLE_RATE	16
-#define COMPR_ATTACK_ADJUSTED	(0.0624130625)
-#define COMPR_REALESE_ADJUSTED	(0.0616895)
-//#define COMPR_ATTACK_ADJUSTED	(COMPR_ATTACK  / ENVELOP_FOLLOWER_SAMPLE_RATE)
-//#define COMPR_REALESE_ADJUSTED	(COMPR_REALESE / ENVELOP_FOLLOWER_SAMPLE_RATE)
+#define ENVELOP_FOLLOWER_SAMPLE_RATE	1
+#define ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT	1.0f
+//#define COMPR_ATTACK_ADJUSTED	(0.0624130625)
+//#define COMPR_REALESE_ADJUSTED	(0.0616895)
+#define COMPR_ATTACK_ADJUSTED	(COMPR_ATTACK  / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
+#define COMPR_REALESE_ADJUSTED	(COMPR_REALESE / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
 
-#define POST_CLU_GAIN	1
+#define PRE_CLU_GAIN	0.01f
+#define POST_CLU_GAIN	1.2f
 //#define HARMONICS_GAIN	2.0
 #define HU1_A	0.0125f
 #define HU1_B	0.08215f
+#define HU1_A_ADJUSTED	(HU1_A  / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
+#define HU1_B_ADJUSTED	(HU1_B / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
 
-float vb_volume = 1.3;
-float HARMONICS_GAIN = 2.0 ;
+float vb_volume = 0.3315;// 30 * 0.85*1.3
+float HARMONICS_GAIN = 1.1 ;
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        vb_dsp                                                                          */
 /*                                                                                                         */
@@ -179,18 +185,22 @@ void vb_dsp(const void * const aHandle ,
 
 	float curr_ratio = 1;
 	uint16_t i;
-	float threshold = 0.01;// * ((uint16_t)0x7fff) ;
-	float reverse_ratio = 0.5;
+//	float threshold = 0.01;// * ((uint16_t)0x7fff) ;
+//	float reverse_ratio = 0.5;
 	uint8_t envelope_folower_sample_count =ENVELOP_FOLLOWER_SAMPLE_RATE;
-	static float saved_yn1=0,saved_y1n1;
+	static float saved_yn1=0,saved_y1n1=0,saved_xn1=0;
+	static float saved_harmonic_outn1=0;
 	float yn1,y1n1;
-	float y1;
+	float xn1;
+	float harmonic_outn1;
 
 
-	float curr_y ;
+	float curr_y,curr_x ;
 
 	yn1 = saved_yn1;
+	xn1 = saved_xn1;
 	y1n1 = saved_y1n1;
+	harmonic_outn1 = saved_harmonic_outn1;
 
 
 	for(i = 0 ; i < data_len ; i++)
@@ -198,12 +208,13 @@ void vb_dsp(const void * const aHandle ,
 		float tmp,tmp1,abs_result;
 
 
-		curr_y = apCh1In[i]/ 0x7fff ;
-//		curr_y = 6 * curr_y;
+		curr_x = apCh1In[i]  / 0x7fff ;
+//		curr_x = PRE_CLU_GAIN * curr_x;
+		curr_x = (-2.2f) * curr_x;
 
-		if(ENVELOP_FOLLOWER_SAMPLE_RATE == envelope_folower_sample_count )
-		{
-			abs_result = fabs(curr_y);
+//		if(ENVELOP_FOLLOWER_SAMPLE_RATE == envelope_folower_sample_count )
+//		{
+			abs_result = fabs(curr_x);
 			tmp = abs_result;
 			tmp1 = COMPR_REALESE_ADJUSTED * y1n1 + (1 - COMPR_REALESE_ADJUSTED) * tmp;
 			if(tmp < tmp1)
@@ -217,34 +228,45 @@ void vb_dsp(const void * const aHandle ,
 			tmp = tmp + tmp1;
 
 			yn1=tmp;
+
+			tmp = tmp;// / 0x7fff;
 			curr_ratio = A/(B+tmp);
 			envelope_folower_sample_count = 1;
 
 			// harmonic creations
-			if(curr_y < yn1)
+#if 1
+			if(curr_x < harmonic_outn1  )
 			{
-				tmp = HU1_B;
+				tmp = HU1_B_ADJUSTED;
 			}
 			else
 			{
-				tmp = HU1_A;
+				tmp = HU1_A_ADJUSTED;
 			}
-			yn1 = (1-tmp)*yn1;
-			yn1 += tmp * curr_y ;
+			harmonic_outn1 = (1-tmp)*harmonic_outn1;
+			harmonic_outn1 += tmp * curr_x ;
+#else
+			if(curr_x > xn1)
+			{
+				harmonic_outn1 = curr_x;
+			}
+			xn1 = curr_x;
+#endif
+//		}
+//		envelope_folower_sample_count++;
 
-		}
-		envelope_folower_sample_count++;
-
-		curr_y = curr_ratio * curr_y ;
+		curr_y = curr_ratio * curr_x ;
 //		curr_y = curr_y * POST_CLU_GAIN;
-		tmp = HARMONICS_GAIN * yn1;
+		tmp = HARMONICS_GAIN * harmonic_outn1;
 		curr_y += tmp ;
-		curr_y = curr_y * vb_volume;
-		apCh1Out[ i ] =   curr_y * 0x7fff;
+		curr_y = curr_y * vb_volume ;
+		apCh1Out[ i ] =   curr_y  * 0x7fff;
 
 
 	}
 
+	saved_harmonic_outn1 = harmonic_outn1 ;
+	saved_xn1 =xn1 ;
 	saved_yn1 =yn1 ;
 	saved_y1n1 =y1n1 ;
 
@@ -299,7 +321,7 @@ uint8_t app_dev_callback(void * const aHandle ,
 static void main_thread_func (void * param)
 {
 	xMessage_t xRxMessage;
-	uint16_t i,j;
+	uint16_t i;//,j;
 	int16_t *pRxBuf;
 	int16_t *pTxBuf;
 	float *pTmpBuf1,*pTmpBuf2,*pTmpBuf3;
@@ -371,16 +393,18 @@ static void main_thread_func (void * param)
 					/********  VB  ************/
 					if (vb_on)
 					{
-
+#if 1
 						vb_dsp(NULL ,  1, 1 , I2S_BUFF_LEN ,
 								&leftChData_step_2[LATENCY_LENGTH],NULL,
 								&leftChData_step_1[LATENCY_LENGTH] ,NULL);
 
-	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_limiter,leftChData_step_1,leftChData_step_2,
-	//							 I2S_BUFF_LEN + LATENCY_LENGTH);
-
-	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_hpf_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
-
+//	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_limiter,leftChData_step_1,leftChData_step_2,
+//	//							 I2S_BUFF_LEN + LATENCY_LENGTH);
+//
+//	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_hpf_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
+#else
+						my_float_memcpy(leftChData_step_1,leftChData_step_2, I2S_BUFF_LEN );
+#endif
 						DSP_FUNC_1CH_IN_1CH_OUT(&vb_final_filter,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
 					}
 					else
@@ -515,6 +539,67 @@ static void main_thread_func (void * param)
     }
 }
 
+/*---------------------------------------------------------------------------------------------------------*/
+/* Function:        app_dev_set_cuttof                                                                          */
+/*                                                                                                         */
+/* Parameters:                                                                                             */
+/*                                                                                         */
+/*                                                                                                  */
+/* Returns:                                                                                      */
+/* Side effects:                                                                                           */
+/* Description:                                                                                            */
+/*                                                            						 */
+/*---------------------------------------------------------------------------------------------------------*/
+uint8_t app_dev_set_cuttof()
+{
+	set_band_biquads_t  set_band_biquads;
+
+	set_band_biquads.Gain = 1;
+
+	set_band_biquads.Fc = cutoff_freq;
+	set_band_biquads.QValue = 1;//0.836;//0.707;
+	set_band_biquads.filter_mode = BIQUADS_BANDPASS_MODE;
+	set_band_biquads.band_num = 0;
+	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	set_band_biquads.filter_mode = BIQUADS_BANDPASS_MODE;
+	set_band_biquads.band_num = 1;
+	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+
+	set_band_biquads.Fc = cutoff_freq;
+	set_band_biquads.QValue = 1;//0.836;//0.707;
+	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+	set_band_biquads.band_num = 0;
+	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
+	set_band_biquads.band_num = 1;
+	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+
+	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+	set_band_biquads.band_num = 0;
+	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
+	set_band_biquads.band_num = 1;
+	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+
+	set_band_biquads.QValue = 1;//0.836;//0.707;
+	set_band_biquads.Gain = 1;
+	set_band_biquads.Fc = cutoff_freq * 3.4;
+	set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
+	set_band_biquads.band_num = 0;
+	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	set_band_biquads.Fc = cutoff_freq * 0.2;
+	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
+	set_band_biquads.band_num = 1;
+	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	set_band_biquads.QValue = 1;//0.836;//0.707;
+	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+	set_band_biquads.band_num = 2;
+	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+
+
+	return 0;
+}
+
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        app_dev_ioctl                                                                          */
@@ -530,112 +615,51 @@ static void main_thread_func (void * param)
 uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 		, void * aIoctl_param1 , void * aIoctl_param2)
 {
-	set_band_biquads_t  set_band_biquads;
+
 	switch(aIoctl_num)
 	{
 		case IOCTL_DEVICE_START :
 
 			/* Create an application thread */
 
-			set_band_biquads.Fc = 100;
-			set_band_biquads.QValue = 1;//0.836;//0.707;
-			set_band_biquads.Gain = 1;
-
 			equalizer_api_init_dsp_descriptor(&lpf_filter);
 			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
-			set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 0;
-			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_1_POLE;
-			set_band_biquads.band_num = 1;
-			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&lpf_filter , IOCTL_DEVICE_START );
+
 
 			equalizer_api_init_dsp_descriptor(&hpf_filter_left);
 			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 0;
-			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-			set_band_biquads.band_num = 1;
-			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&hpf_filter_left , IOCTL_DEVICE_START );
 
 			equalizer_api_init_dsp_descriptor(&hpf_filter_right);
 			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 0;
-			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-			set_band_biquads.band_num = 1;
-			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&hpf_filter_right , IOCTL_DEVICE_START );
 
 
 
 			/************  vb filters ***********/
-			set_band_biquads.Fc = 78.5;
-			set_band_biquads.QValue = 0.707;//0.836;//0.7;
-			set_band_biquads.Gain = 1;
-			equalizer_api_init_dsp_descriptor(&vb_hpf_filter);
-			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)4) );
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 0;
-			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.band_num = 1;
-			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.band_num = 2;
-			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.band_num = 3;
-			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			DSP_IOCTL_0_PARAMS(&vb_hpf_filter , IOCTL_DEVICE_START );
+//			set_band_biquads.Fc = 78.5;
+//			set_band_biquads.QValue = 0.707;//0.836;//0.7;
+//			set_band_biquads.Gain = 1;
+//			equalizer_api_init_dsp_descriptor(&vb_hpf_filter);
+//			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)4) );
+//			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+//			set_band_biquads.band_num = 0;
+//			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+//			set_band_biquads.band_num = 1;
+//			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+//			set_band_biquads.band_num = 2;
+//			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+//			set_band_biquads.band_num = 3;
+//			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+//			DSP_IOCTL_0_PARAMS(&vb_hpf_filter , IOCTL_DEVICE_START );
 
-#if 0
-			set_band_biquads.QValue = 0.707;//0.836;//0.7;
-			set_band_biquads.Gain = 1;
+
 			equalizer_api_init_dsp_descriptor(&vb_final_filter);
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)3) );
-			set_band_biquads.Fc = 100;
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 0;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 1;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.Fc = 300;
-			set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 2;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 			DSP_IOCTL_0_PARAMS(&vb_final_filter , IOCTL_DEVICE_START );
-#else
-			set_band_biquads.QValue = 1;//0.836;//0.707;
-			set_band_biquads.Gain = 1;
-			equalizer_api_init_dsp_descriptor(&vb_final_filter);
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)7) );
-			set_band_biquads.Fc = 80;
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 0;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-			set_band_biquads.band_num = 1;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.QValue = 0.707;//0.836;//0.707;
-			set_band_biquads.Fc = 30;
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 2;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-			set_band_biquads.band_num = 3;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.Fc = 500;
-			set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
-			set_band_biquads.band_num = 4;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.band_num = 5;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-			set_band_biquads.band_num = 6;
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );			DSP_IOCTL_0_PARAMS(&vb_final_filter , IOCTL_DEVICE_START );
-#endif
+			app_dev_set_cuttof();
+
 			/**************   eq filters  *************/
 			equalizer_api_init_dsp_descriptor(&leftChanelEQ);
 			DSP_IOCTL_1_PARAMS(&leftChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)7) );
