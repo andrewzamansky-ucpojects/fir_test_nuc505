@@ -51,8 +51,8 @@
 typedef struct
 {
 
-	int16_t *rxBuffer;
-	int16_t *txBuffer;
+	void *rxBuffer;
+	void *txBuffer;
 
 } xMessage_t;
 
@@ -102,41 +102,15 @@ uint8_t vb_on = 0;
 uint8_t loopback = 0 ;
 uint8_t lf_path = 1 ;
 uint8_t hf_path = 1 ;
-/*---------------------------------------------------------------------------------------------------------*/
-/* Function:        my_float_memcpy                                                                          */
-/*---------------------------------------------------------------------------------------------------------*/
-void my_float_memcpy(float *dest ,float *src , size_t len)
-{
-	for( ; len ;len--)
-	{
-		*dest++ = *src++;
-	}
-}
-
-/*---------------------------------------------------------------------------------------------------------*/
-/* Function:        my_float_memcpy                                                                          */
-/*---------------------------------------------------------------------------------------------------------*/
-void my_float_memcpy_2_buffers(float *dest1 ,float *src1 ,float *dest2 ,float *src2, size_t len)
-{
-	for( ; len ;len--)
-	{
-		*dest1++ = *src1++;
-		*dest2++ = *src2++;
-	}
-}
-
-/*---------------------------------------------------------------------------------------------------------*/
-/* Function:        my_float_memset                                                                          */
-/*---------------------------------------------------------------------------------------------------------*/
-void my_float_memset(float *dest ,float val , size_t len)
-{
-	for( ; len ;len--)
-	{
-		*dest++ = val;
-	}
-}
 
 
+#define	FLOAT_NORMALIZER	( ( 1<<(NUM_OF_BYTES_PER_AUDIO_WORD*8 - 1)	) -1 )
+#if (2==NUM_OF_BYTES_PER_AUDIO_WORD)
+	typedef uint16_t	buffer_type_t	;
+#endif
+#if (4==NUM_OF_BYTES_PER_AUDIO_WORD)
+	typedef uint32_t	buffer_type_t	;
+#endif
 
 //#define COMPR_ATTACK	0.998609f
 //#define COMPR_REALESE	 0.987032f
@@ -166,6 +140,9 @@ float COMPR_REALESE	= 0.9999f;
 
 float vb_volume = 0.3315;// 30 * 0.85*1.3
 float HARMONICS_GAIN = 1.1 ;
+
+uint8_t s_flag=0;
+
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        vb_dsp                                                                          */
 /*                                                                                                         */
@@ -208,7 +185,7 @@ void vb_dsp(const void * const aHandle ,
 		float tmp,tmp1,abs_result;
 
 
-		curr_x = apCh1In[i]  / 0x7fff ;
+		curr_x = apCh1In[i];//  / 0x7fff ;
 //		curr_x = PRE_CLU_GAIN * curr_x;
 		curr_x = (-2.2f) * curr_x;
 
@@ -260,7 +237,7 @@ void vb_dsp(const void * const aHandle ,
 		tmp = HARMONICS_GAIN * harmonic_outn1;
 		curr_y += tmp ;
 		curr_y = curr_y * vb_volume ;
-		apCh1Out[ i ] =   curr_y  * 0x7fff;
+		apCh1Out[ i ] =   curr_y;//  * 0x7fff;
 
 
 	}
@@ -274,6 +251,39 @@ void vb_dsp(const void * const aHandle ,
 }
 
 
+/*---------------------------------------------------------------------------------------------------------*/
+/* Function:        my_float_memcpy                                                                          */
+/*---------------------------------------------------------------------------------------------------------*/
+void my_float_memcpy(float *dest ,float *src , size_t len)
+{
+	for( ; len ;len--)
+	{
+		*dest++ = *src++;
+	}
+}
+
+/*---------------------------------------------------------------------------------------------------------*/
+/* Function:        my_float_memcpy                                                                          */
+/*---------------------------------------------------------------------------------------------------------*/
+void my_float_memcpy_2_buffers(float *dest1 ,float *src1 ,float *dest2 ,float *src2, size_t len)
+{
+	for( ; len ;len--)
+	{
+		*dest1++ = *src1++;
+		*dest2++ = *src2++;
+	}
+}
+
+/*---------------------------------------------------------------------------------------------------------*/
+/* Function:        my_float_memset                                                                          */
+/*---------------------------------------------------------------------------------------------------------*/
+void my_float_memset(float *dest ,float val , size_t len)
+{
+	for( ; len ;len--)
+	{
+		*dest++ = val;
+	}
+}
 
 
 
@@ -322,8 +332,8 @@ static void main_thread_func (void * param)
 {
 	xMessage_t xRxMessage;
 	uint16_t i;//,j;
-	int16_t *pRxBuf;
-	int16_t *pTxBuf;
+	buffer_type_t *pRxBuf;
+	buffer_type_t *pTxBuf;
 	float *pTmpBuf1,*pTmpBuf2,*pTmpBuf3;
 	uint8_t is_timer_elapsed=1;
 	uint32_t retVal;
@@ -337,10 +347,10 @@ static void main_thread_func (void * param)
 		{
 
 
-			pRxBuf = xRxMessage.rxBuffer;
-			pTxBuf = xRxMessage.txBuffer;
+			pRxBuf = (buffer_type_t*)xRxMessage.rxBuffer;
+			pTxBuf = (buffer_type_t*)xRxMessage.txBuffer;
 
-			if(loopback)//transparent mode
+			if(1 == loopback)//transparent mode
 			{
 				for(i = 0 ; i < I2S_BUFF_LEN ; i++)
 				{
@@ -352,130 +362,153 @@ static void main_thread_func (void * param)
 			}
 			else
 			{
-				// on gcc cortex-m3 MEMCPY() is slower then direct copy !!!
-				//******* restore previous last chunk as current first chunk
-				my_float_memcpy_2_buffers( leftChData_step_0 , leftChData_orig_prev,
-						rightChData_step_0 , rightChData_orig_prev , LATENCY_LENGTH);
-
-				//******* distribute L-R
-				pTmpBuf1 = &leftChData_step_0[LATENCY_LENGTH];
-				pTmpBuf2 = &rightChData_step_0[LATENCY_LENGTH];
-				for(i = LATENCY_LENGTH ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
+				if(2 == loopback)//transparent mode
 				{
-					*pTmpBuf1++ = (float) (*pRxBuf++);//pRxBuf[2*j ];
-					*pTmpBuf2++ = (float) (*pRxBuf++);//pRxBuf[2*j + 1];
-	//				leftChData_step_0[i] = (float)pRxBuf[2*j ];//(*pRxBuf++);//pRxBuf[2*j ];
-	//				rightChData_step_0[i] = (float)pRxBuf[2*j + 1];//(*pRxBuf++);//pRxBuf[2*j + 1];
-				}
+					pTmpBuf1 = &leftChData_step_2[0];
+					pTmpBuf2 = &rightChData_step_2[0];
+					for(i = LATENCY_LENGTH ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
+					{
+						*pTmpBuf1++ = ((float) (*pRxBuf++)) / FLOAT_NORMALIZER;// /0x7fffffff;//pRxBuf[2*j ];
+						*pTmpBuf2++ = ((float) (*pRxBuf++)) / FLOAT_NORMALIZER;// /0x7fffffff;//pRxBuf[2*j + 1];
+					}
 
-				//******* store last chunk for latency
-				my_float_memcpy_2_buffers( leftChData_orig_prev , &leftChData_step_0[I2S_BUFF_LEN],
-						rightChData_orig_prev , &rightChData_step_0[I2S_BUFF_LEN] , LATENCY_LENGTH);
+				}
+				else
+				{
+					// on gcc cortex-m3 MEMCPY() is slower then direct copy !!!
+					//******* restore previous last chunk as current first chunk
+					my_float_memcpy_2_buffers( leftChData_step_0 , leftChData_orig_prev,
+							rightChData_step_0 , rightChData_orig_prev , LATENCY_LENGTH);
+
+					//******* distribute L-R
+					pTmpBuf1 = &leftChData_step_0[LATENCY_LENGTH];
+					pTmpBuf2 = &rightChData_step_0[LATENCY_LENGTH];
+					for(i = LATENCY_LENGTH ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
+					{
+	//					if( *pRxBuf & 0x800000)
+	//					{
+	//						*pRxBuf |= ~0xffffff;
+	//					}
+						*pTmpBuf1++ = ((float) (*pRxBuf++))  / FLOAT_NORMALIZER;//pRxBuf[2*j ];
+	//					if( *pRxBuf & 0x800000)
+	//					{
+	//						*pRxBuf |= ~0xffffff;
+	//					}
+						*pTmpBuf2++ = ((float) (*pRxBuf++))  / FLOAT_NORMALIZER;//pRxBuf[2*j + 1];
+		//				leftChData_step_0[i] = (float)pRxBuf[2*j ];//(*pRxBuf++);//pRxBuf[2*j ];
+		//				rightChData_step_0[i] = (float)pRxBuf[2*j + 1];//(*pRxBuf++);//pRxBuf[2*j + 1];
+					}
+
+					//******* store last chunk for latency
+					my_float_memcpy_2_buffers( leftChData_orig_prev , &leftChData_step_0[I2S_BUFF_LEN],
+							rightChData_orig_prev , &rightChData_step_0[I2S_BUFF_LEN] , LATENCY_LENGTH);
 
 
 	#if 1 // with X.O
 
 
 
-				/******** LF path **********/
-				if(lf_path)
-				{
-					pTmpBuf1 = leftChData_step_1 ;
-					pTmpBuf2 = leftChData_step_0 ;
-					pTmpBuf3 = rightChData_step_0 ;
-					for(i = 0 ; i < (I2S_BUFF_LEN  + LATENCY_LENGTH); i++)
+					/******** LF path **********/
+					if(lf_path)
 					{
-						*pTmpBuf1++ = ((*pTmpBuf2++) +(*pTmpBuf3++))/2;
-					}
+						pTmpBuf1 = leftChData_step_1 ;
+						pTmpBuf2 = leftChData_step_0 ;
+						pTmpBuf3 = rightChData_step_0 ;
+						for(i = 0 ; i < (I2S_BUFF_LEN  + LATENCY_LENGTH); i++)
+						{
+							*pTmpBuf1++ = ((*pTmpBuf2++) +(*pTmpBuf3++))/2;
+						}
 
-					DSP_FUNC_1CH_IN_1CH_OUT(&lpf_filter,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
+						DSP_FUNC_1CH_IN_1CH_OUT(&lpf_filter,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
 
-					/********  VB  ************/
-					if (vb_on)
-					{
-#if 1
-						vb_dsp(NULL ,  1, 1 , I2S_BUFF_LEN ,
-								&leftChData_step_2[LATENCY_LENGTH],NULL,
-								&leftChData_step_1[LATENCY_LENGTH] ,NULL);
+						/********  VB  ************/
+						if (vb_on)
+						{
+	#if 1
+							vb_dsp(NULL ,  1, 1 , I2S_BUFF_LEN ,
+									&leftChData_step_2[LATENCY_LENGTH],NULL,
+									&leftChData_step_1[LATENCY_LENGTH] ,NULL);
 
-//	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_limiter,leftChData_step_1,leftChData_step_2,
-//	//							 I2S_BUFF_LEN + LATENCY_LENGTH);
-//
-//	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_hpf_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
-#else
-						my_float_memcpy(leftChData_step_1,leftChData_step_2, I2S_BUFF_LEN );
-#endif
-						DSP_FUNC_1CH_IN_1CH_OUT(&vb_final_filter,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
+	//	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_limiter,leftChData_step_1,leftChData_step_2,
+	//	//							 I2S_BUFF_LEN + LATENCY_LENGTH);
+	//
+	//	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_hpf_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
+	#else
+							my_float_memcpy(leftChData_step_1,leftChData_step_2, I2S_BUFF_LEN );
+	#endif
+							DSP_FUNC_1CH_IN_1CH_OUT(&vb_final_filter,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
+						}
+						else
+						{
+							pTmpBuf1 = leftChData_step_2 ;
+							pTmpBuf2 = leftChData_step_2 ;
+							for(i = 0 ; i < (I2S_BUFF_LEN  + LATENCY_LENGTH); i++)
+							{
+								*pTmpBuf1++ = (*pTmpBuf2++) ;
+							}
+						}
+						/******* end of VB   *********/
+
+
+						my_float_memcpy(VB_data_out,&VB_data_out[I2S_BUFF_LEN], LATENCY_LENGTH );
+						my_float_memcpy(&VB_data_out[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH], I2S_BUFF_LEN );
 					}
 					else
 					{
-						pTmpBuf1 = leftChData_step_2 ;
-						pTmpBuf2 = leftChData_step_2 ;
-						for(i = 0 ; i < (I2S_BUFF_LEN  + LATENCY_LENGTH); i++)
-						{
-							*pTmpBuf1++ = (*pTmpBuf2++) ;
-						}
+						my_float_memset(VB_data_out , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
 					}
-					/******* end of VB   *********/
+					/********* end of LF path    **********/
+
+					/********** HF path *********/
+
+					if(hf_path)
+					{
+						DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_left,&leftChData_step_0[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
+						DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_right,&rightChData_step_0[LATENCY_LENGTH],&rightChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
+
+					}
+					else
+					{
+						my_float_memset(leftChData_step_1 , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
+						my_float_memset(rightChData_step_1 , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
+					}
 
 
-					my_float_memcpy(VB_data_out,&VB_data_out[I2S_BUFF_LEN], LATENCY_LENGTH );
-					my_float_memcpy(&VB_data_out[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH], I2S_BUFF_LEN );
-				}
-				else
-				{
-					my_float_memset(VB_data_out , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
-				}
-				/********* end of LF path    **********/
+					DSP_FUNC_1CH_IN_1CH_OUT(&leftChanelEQ,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
+					DSP_FUNC_1CH_IN_1CH_OUT(&rightChanelEQ,&rightChData_step_1[LATENCY_LENGTH],&rightChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
 
-				/********** HF path *********/
-
-				if(hf_path)
-				{
-					DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_left,&leftChData_step_0[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
-					DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_right,&rightChData_step_0[LATENCY_LENGTH],&rightChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
-
-				}
-				else
-				{
-					my_float_memset(leftChData_step_1 , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
-					my_float_memset(rightChData_step_1 , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
-				}
+					my_float_memcpy_2_buffers( leftChData_step_2 , leftChData_hf_prev,
+							rightChData_step_2 , rightChData_hf_prev , LATENCY_LENGTH);
+					my_float_memcpy_2_buffers( leftChData_hf_prev , &leftChData_step_2[I2S_BUFF_LEN],
+							rightChData_hf_prev , &rightChData_step_2[I2S_BUFF_LEN] , LATENCY_LENGTH);
 
 
-				DSP_FUNC_1CH_IN_1CH_OUT(&leftChanelEQ,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
-				DSP_FUNC_1CH_IN_1CH_OUT(&rightChanelEQ,&rightChData_step_1[LATENCY_LENGTH],&rightChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
-
-				my_float_memcpy_2_buffers( leftChData_step_2 , leftChData_hf_prev,
-						rightChData_step_2 , rightChData_hf_prev , LATENCY_LENGTH);
-				my_float_memcpy_2_buffers( leftChData_hf_prev , &leftChData_step_2[I2S_BUFF_LEN],
-						rightChData_hf_prev , &rightChData_step_2[I2S_BUFF_LEN] , LATENCY_LENGTH);
+					/********* end of HF path  *********/
 
 
-				/********* end of HF path  *********/
-
-
-				/********** collecting LF and HF pathes together with phase change on HF *********/
-				pTmpBuf1 = leftChData_step_2 ;
-				pTmpBuf2 = rightChData_step_2 ;
-				pTmpBuf3 = VB_data_out ;
-				for(i = 0 ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
-				{
-//					*pTmpBuf1 = -*pTmpBuf1;
-//					*pTmpBuf2 = -*pTmpBuf2;
-					(*pTmpBuf1++) += (*pTmpBuf3);
-					(*pTmpBuf2++) += (*pTmpBuf3++) ;
-				}
-				/********** end of collecting LF and HF pathes together  *********/
+					/********** collecting LF and HF pathes together with phase change on HF *********/
+					pTmpBuf1 = leftChData_step_2 ;
+					pTmpBuf2 = rightChData_step_2 ;
+					pTmpBuf3 = VB_data_out ;
+					for(i = 0 ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
+					{
+	//					*pTmpBuf1 = -*pTmpBuf1;
+	//					*pTmpBuf2 = -*pTmpBuf2;
+						(*pTmpBuf1++) += (*pTmpBuf3);
+						(*pTmpBuf2++) += (*pTmpBuf3++) ;
+					}
+					/********** end of collecting LF and HF pathes together  *********/
 
 
 
-	#else  // without X.O
+		#else  // without X.O
 				DSP_FUNC_1CH_IN_1CH_OUT(&leftChanelEQ,leftChData_step_0,leftChData_step_2,I2S_BUFF_LEN);
 				DSP_FUNC_1CH_IN_1CH_OUT(&rightChanelEQ,rightChData_step_0,rightChData_step_2,I2S_BUFF_LEN);
-	#endif //   X.O
+		#endif //   X.O
 
-				if(0 != compressor_ratio)
+				}//if (2==loopback )
+
+				if((0 != compressor_ratio) && (0==loopback))
 				{
 					DSP_FUNC_2CH_IN_2CH_OUT(&compressor_limiter,leftChData_step_2,rightChData_step_2,
 							leftChData_step_1,rightChData_step_1,
@@ -493,22 +526,31 @@ static void main_thread_func (void * param)
 				pTmpBuf2 = rightChData_step_1 ;
 				for(i = 0 ; i < (I2S_BUFF_LEN); i++)
 				{
-					*pTxBuf++ = (int16_t)(*pTmpBuf1++)		;// pTxBuf[2*i]
-					*pTxBuf++ = (int16_t)(*pTmpBuf2++); // pTxBuf[2*i + 1]
+					*pTmpBuf1 = *pTmpBuf1 * FLOAT_NORMALIZER;
+					*pTxBuf = (buffer_type_t)(*pTmpBuf1++)		;// pTxBuf[2*i]
+//					*pTxBuf = *pTxBuf & 0x00ffffff;
+					pTxBuf++;
+
+					*pTmpBuf2 = *pTmpBuf2 * FLOAT_NORMALIZER;
+					*pTxBuf = (buffer_type_t)(*pTmpBuf2++); // pTxBuf[2*i + 1]
+//					*pTxBuf = *pTxBuf & 0x00ffffff;
+					pTxBuf++;
 				}
 
 
 
 
-	//			if ( s_flag1 < 2 )
-	//			{
-	//				s_flag1 ++;
-	//				if(2 == s_flag1)
-	//				{
-	//					DEV_IOCTL_0_PARAMS(i2s_dev , I2S_ENABLE_OUTPUT_IOCTL );
-	//				}
-	//			}
-			}//if loopback
+
+			}//if (1==loopback )
+
+			if ( s_flag < 2 )
+			{
+				s_flag ++;
+				if(2 == s_flag)
+				{
+					DEV_IOCTL_0_PARAMS(i2s_dev , I2S_ENABLE_OUTPUT_IOCTL );
+				}
+			}
 		}
 
 		if (is_timer_elapsed)

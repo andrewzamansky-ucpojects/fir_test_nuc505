@@ -135,7 +135,7 @@ void prvSetupHardware( void )
 {
 	//pdev_descriptor dev;
     uint32_t baud;
-
+    I2S_API_set_params_t I2S_API_set_params;
 	NVIC_APP_Init();
 
 
@@ -167,6 +167,10 @@ void prvSetupHardware( void )
 
 	DEV_IOCTL_0_PARAMS(app_dev , IOCTL_DEVICE_START );
 
+	I2S_API_set_params.num_of_words_in_buffer_per_chenel = I2S_BUFF_LEN;
+	I2S_API_set_params.num_of_bytes_in_word = NUM_OF_BYTES_PER_AUDIO_WORD;
+
+	DEV_IOCTL_1_PARAMS(i2s_dev , I2S_SET_PARAMS, &I2S_API_set_params);
 	DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
 
 
