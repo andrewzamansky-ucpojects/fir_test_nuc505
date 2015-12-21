@@ -95,7 +95,7 @@ float rightChData_hf_prev[LATENCY_LENGTH] ={0}	;
 float compressor_ratio = 0;
 float cutoff_freq = 100;
 
-TIMER_API_CREATE_STATIC_DEV(app_timer_inst,"httpt" ,systick_dev_inst );
+TIMER_API_CREATE_STATIC_DEV(app_timer_inst,"apptim" ,systick_dev_inst );
 static pdev_descriptor_const  timer_device = &app_timer_inst;
 
 uint8_t vb_on = 0;
@@ -104,12 +104,13 @@ uint8_t lf_path = 1 ;
 uint8_t hf_path = 1 ;
 
 
-#define	FLOAT_NORMALIZER	( ( 1<<(NUM_OF_BYTES_PER_AUDIO_WORD*8 - 1)	) -1 )
 #if (2==NUM_OF_BYTES_PER_AUDIO_WORD)
-	typedef uint16_t	buffer_type_t	;
+	#define	FLOAT_NORMALIZER	0x7fff
+	typedef int16_t	buffer_type_t	;
 #endif
 #if (4==NUM_OF_BYTES_PER_AUDIO_WORD)
-	typedef uint32_t	buffer_type_t	;
+	#define	FLOAT_NORMALIZER	0x7fffffff
+	typedef int32_t	buffer_type_t	;
 #endif
 
 //#define COMPR_ATTACK	0.998609f
@@ -141,7 +142,7 @@ float COMPR_REALESE	= 0.9999f;
 float vb_volume = 0.3315;// 30 * 0.85*1.3
 float HARMONICS_GAIN = 1.1 ;
 
-uint8_t s_flag=0;
+static uint8_t s_flag=0;
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        vb_dsp                                                                          */
@@ -346,6 +347,14 @@ static void main_thread_func (void * param)
 		if( OS_QUEUE_RECEIVE_SUCCESS ==  retVal)
 		{
 
+			if ( s_flag < 2 )
+			{
+				if(1 == s_flag)
+				{
+					DEV_IOCTL_0_PARAMS(i2s_dev , I2S_ENABLE_OUTPUT_IOCTL );
+				}
+				s_flag++;
+			}
 
 			pRxBuf = (buffer_type_t*)xRxMessage.rxBuffer;
 			pTxBuf = (buffer_type_t*)xRxMessage.txBuffer;
@@ -543,14 +552,7 @@ static void main_thread_func (void * param)
 
 			}//if (1==loopback )
 
-			if ( s_flag < 2 )
-			{
-				s_flag ++;
-				if(2 == s_flag)
-				{
-					DEV_IOCTL_0_PARAMS(i2s_dev , I2S_ENABLE_OUTPUT_IOCTL );
-				}
-			}
+
 		}
 
 		if (is_timer_elapsed)

@@ -35,7 +35,7 @@
 
 #define I2S_BUFF_LEN 		512
 #define LATENCY_LENGTH		64
-#define	NUM_OF_BYTES_PER_AUDIO_WORD		2// 2- 16bits , 4- 32bits
+#define	NUM_OF_BYTES_PER_AUDIO_WORD		4// 2- 16bits , 4- 32bits
 
 #define 	_USE_DSP_
 
