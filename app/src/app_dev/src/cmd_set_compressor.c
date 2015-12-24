@@ -25,7 +25,7 @@ extern float compressor_ratio ;
  * Return:      None
  *
  */
-int do_set_comressor (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_set_compressor (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
 
@@ -43,8 +43,7 @@ int do_set_comressor (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 
 U_BOOT_CMD(
-	set_comressor,     255,	0,	do_set_comressor,
-	"set_comressor val",
+	set_compressor,     255,	0,	do_set_compressor,
+	"set_compressor val",
 	"info   - \n"
 );
-

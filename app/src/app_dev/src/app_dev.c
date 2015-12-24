@@ -25,14 +25,25 @@
 
 #include "dsp_managment_api.h"
 #include "equalizer_api.h"
+#include "mixer_api.h"
 #include "compressor_api.h"
 #include "I2S_nuc505_api.h"
+#include "I2S_splitter_api.h"
+#include "I2S_mixer_api.h"
 #include "timer_api.h"
 #include "heartbeat_api.h"
 #include "math.h"
+#include "memory_pool_api.h"
 
 /********  defines *********************/
-
+#if (2 == NUM_OF_BYTES_PER_AUDIO_WORD)
+	#define	FLOAT_NORMALIZER	0x7fff
+	typedef int16_t	buffer_type_t	;
+#endif
+#if (4 == NUM_OF_BYTES_PER_AUDIO_WORD)
+	#define	FLOAT_NORMALIZER	0x7fffffff
+	typedef int32_t	buffer_type_t	;
+#endif
 
 
 /********  types  *********************/
@@ -59,6 +70,10 @@ typedef struct
 
 os_queue_t xQueue=NULL ;
 
+
+dsp_descriptor_t app_I2S_spliter;
+dsp_descriptor_t app_I2S_mixer;
+
 dsp_descriptor_t lpf_filter;
 dsp_descriptor_t vb_hpf_filter;
 dsp_descriptor_t vb_final_filter;
@@ -73,24 +88,14 @@ dsp_descriptor_t rightChanelEQ;
 dsp_descriptor_t compressor_limiter;
 dsp_descriptor_t vb_limiter;
 
+dsp_descriptor_t stereo_to_mono;
+dsp_descriptor_t adder_bass_with_left_channel;
+dsp_descriptor_t adder_bass_with_right_channel;
+
 extern pdev_descriptor_const i2s_dev;
 extern pdev_descriptor_const heartbeat_dev ;
-float leftChData_step_0[I2S_BUFF_LEN + LATENCY_LENGTH]  ={0};
-float rightChData_step_0[I2S_BUFF_LEN + LATENCY_LENGTH]	={0};
-float leftChData_step_1[I2S_BUFF_LEN + LATENCY_LENGTH]	={0};
-float rightChData_step_1[I2S_BUFF_LEN + LATENCY_LENGTH]	={0};
-float leftChData_step_2[I2S_BUFF_LEN + LATENCY_LENGTH]	={0};
-float rightChData_step_2[I2S_BUFF_LEN + LATENCY_LENGTH]	={0};
 
-float VB_data_out[I2S_BUFF_LEN + LATENCY_LENGTH] ={0}	;
-
-
-
-float leftChData_orig_prev[LATENCY_LENGTH]	={0};
-float rightChData_orig_prev[LATENCY_LENGTH] 	={0};
-
-float leftChData_hf_prev[LATENCY_LENGTH]	={0};
-float rightChData_hf_prev[LATENCY_LENGTH] ={0}	;
+void *dsp_buffers_pool;
 
 float compressor_ratio = 0;
 float cutoff_freq = 100;
@@ -104,14 +109,6 @@ uint8_t lf_path = 1 ;
 uint8_t hf_path = 1 ;
 
 
-#if (2==NUM_OF_BYTES_PER_AUDIO_WORD)
-	#define	FLOAT_NORMALIZER	0x7fff
-	typedef int16_t	buffer_type_t	;
-#endif
-#if (4==NUM_OF_BYTES_PER_AUDIO_WORD)
-	#define	FLOAT_NORMALIZER	0x7fffffff
-	typedef int32_t	buffer_type_t	;
-#endif
 
 //#define COMPR_ATTACK	0.998609f
 //#define COMPR_REALESE	 0.987032f
@@ -254,6 +251,7 @@ void vb_dsp(const void * const aHandle ,
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        my_float_memcpy                                                                          */
+// on gcc cortex-m3 MEMCPY() is slower then direct copy !!!
 /*---------------------------------------------------------------------------------------------------------*/
 void my_float_memcpy(float *dest ,float *src , size_t len)
 {
@@ -265,6 +263,7 @@ void my_float_memcpy(float *dest ,float *src , size_t len)
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        my_float_memcpy                                                                          */
+// on gcc cortex-m3 MEMCPY() is slower then direct copy !!!
 /*---------------------------------------------------------------------------------------------------------*/
 void my_float_memcpy_2_buffers(float *dest1 ,float *src1 ,float *dest2 ,float *src2, size_t len)
 {
@@ -277,6 +276,7 @@ void my_float_memcpy_2_buffers(float *dest1 ,float *src1 ,float *dest2 ,float *s
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        my_float_memset                                                                          */
+// on gcc cortex-m3 MEMCPY() is slower then direct copy !!!
 /*---------------------------------------------------------------------------------------------------------*/
 void my_float_memset(float *dest ,float val , size_t len)
 {
@@ -315,7 +315,9 @@ uint8_t app_dev_callback(void * const aHandle ,
 }
 
 
-#define HIGH_THRESHOLD_VALUE	0x4000
+#define HIGH_THRESHOLD_VALUE	0.8
+
+static float *vb_dsp_Pad_Out_0;
 
 
 /**
@@ -335,7 +337,6 @@ static void main_thread_func (void * param)
 	uint16_t i;//,j;
 	buffer_type_t *pRxBuf;
 	buffer_type_t *pTxBuf;
-	float *pTmpBuf1,*pTmpBuf2,*pTmpBuf3;
 	uint8_t is_timer_elapsed=1;
 	uint32_t retVal;
 	xQueue = os_create_queue( APP_DEV_CONFIG_MAX_QUEUE_LEN , sizeof(xMessage_t ) );
@@ -356,8 +357,8 @@ static void main_thread_func (void * param)
 				s_flag++;
 			}
 
-			pRxBuf = (buffer_type_t*)xRxMessage.rxBuffer;
-			pTxBuf = (buffer_type_t*)xRxMessage.txBuffer;
+			pRxBuf =  (buffer_type_t*)xRxMessage.rxBuffer;
+			pTxBuf =  (buffer_type_t*)xRxMessage.txBuffer;
 
 			if(1 == loopback)//transparent mode
 			{
@@ -371,47 +372,16 @@ static void main_thread_func (void * param)
 			}
 			else
 			{
+				//******* distribute L-R
+				DSP_FUNC_1CH_IN_2CH_OUT(&app_I2S_spliter,(float*)pRxBuf, I2S_BUFF_LEN );
+
 				if(2 == loopback)//transparent mode
 				{
-					pTmpBuf1 = &leftChData_step_2[0];
-					pTmpBuf2 = &rightChData_step_2[0];
-					for(i = LATENCY_LENGTH ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
-					{
-						*pTmpBuf1++ = ((float) (*pRxBuf++)) / FLOAT_NORMALIZER;// /0x7fffffff;//pRxBuf[2*j ];
-						*pTmpBuf2++ = ((float) (*pRxBuf++)) / FLOAT_NORMALIZER;// /0x7fffffff;//pRxBuf[2*j + 1];
-					}
-
+					 adder_bass_with_left_channel.out_pads[0] = app_I2S_spliter.out_pads[0];
+					 adder_bass_with_right_channel.out_pads[0] = app_I2S_spliter.out_pads[1];
 				}
 				else
 				{
-					// on gcc cortex-m3 MEMCPY() is slower then direct copy !!!
-					//******* restore previous last chunk as current first chunk
-					my_float_memcpy_2_buffers( leftChData_step_0 , leftChData_orig_prev,
-							rightChData_step_0 , rightChData_orig_prev , LATENCY_LENGTH);
-
-					//******* distribute L-R
-					pTmpBuf1 = &leftChData_step_0[LATENCY_LENGTH];
-					pTmpBuf2 = &rightChData_step_0[LATENCY_LENGTH];
-					for(i = LATENCY_LENGTH ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
-					{
-	//					if( *pRxBuf & 0x800000)
-	//					{
-	//						*pRxBuf |= ~0xffffff;
-	//					}
-						*pTmpBuf1++ = ((float) (*pRxBuf++))  / FLOAT_NORMALIZER;//pRxBuf[2*j ];
-	//					if( *pRxBuf & 0x800000)
-	//					{
-	//						*pRxBuf |= ~0xffffff;
-	//					}
-						*pTmpBuf2++ = ((float) (*pRxBuf++))  / FLOAT_NORMALIZER;//pRxBuf[2*j + 1];
-		//				leftChData_step_0[i] = (float)pRxBuf[2*j ];//(*pRxBuf++);//pRxBuf[2*j ];
-		//				rightChData_step_0[i] = (float)pRxBuf[2*j + 1];//(*pRxBuf++);//pRxBuf[2*j + 1];
-					}
-
-					//******* store last chunk for latency
-					my_float_memcpy_2_buffers( leftChData_orig_prev , &leftChData_step_0[I2S_BUFF_LEN],
-							rightChData_orig_prev , &rightChData_step_0[I2S_BUFF_LEN] , LATENCY_LENGTH);
-
 
 	#if 1 // with X.O
 
@@ -420,51 +390,39 @@ static void main_thread_func (void * param)
 					/******** LF path **********/
 					if(lf_path)
 					{
-						pTmpBuf1 = leftChData_step_1 ;
-						pTmpBuf2 = leftChData_step_0 ;
-						pTmpBuf3 = rightChData_step_0 ;
-						for(i = 0 ; i < (I2S_BUFF_LEN  + LATENCY_LENGTH); i++)
-						{
-							*pTmpBuf1++ = ((*pTmpBuf2++) +(*pTmpBuf3++))/2;
-						}
+						DSP_FUNC_2CH_IN_1CH_OUT(&stereo_to_mono,
+								app_I2S_spliter.out_pads[0],app_I2S_spliter.out_pads[1],  I2S_BUFF_LEN );
 
-						DSP_FUNC_1CH_IN_1CH_OUT(&lpf_filter,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
+						DSP_FUNC_1CH_IN_1CH_OUT(&lpf_filter,stereo_to_mono.out_pads[0] ,I2S_BUFF_LEN );
+						memory_pool_free(dsp_buffers_pool,stereo_to_mono.out_pads[0]);
 
 						/********  VB  ************/
 						if (vb_on)
 						{
+							vb_dsp_Pad_Out_0 = (float*)memory_pool_malloc(dsp_buffers_pool);
 	#if 1
 							vb_dsp(NULL ,  1, 1 , I2S_BUFF_LEN ,
-									&leftChData_step_2[LATENCY_LENGTH],NULL,
-									&leftChData_step_1[LATENCY_LENGTH] ,NULL);
+									lpf_filter.out_pads[0] ,NULL,
+									vb_dsp_Pad_Out_0  ,NULL);
 
-	//	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_limiter,leftChData_step_1,leftChData_step_2,
-	//	//							 I2S_BUFF_LEN + LATENCY_LENGTH);
-	//
-	//	//					DSP_FUNC_1CH_IN_1CH_OUT(&vb_hpf_filter,&leftChData_step_2[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
+							memory_pool_free(dsp_buffers_pool,lpf_filter.out_pads[0]);
 	#else
-							my_float_memcpy(leftChData_step_1,leftChData_step_2, I2S_BUFF_LEN );
+							vb_dsp_Pad_Out_0 = stereo_to_mono.out_pads[0] ;
 	#endif
-							DSP_FUNC_1CH_IN_1CH_OUT(&vb_final_filter,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
+
+							DSP_FUNC_1CH_IN_1CH_OUT(&vb_final_filter,vb_dsp_Pad_Out_0,I2S_BUFF_LEN );
+							memory_pool_free(dsp_buffers_pool,vb_dsp_Pad_Out_0);
 						}
 						else
 						{
-							pTmpBuf1 = leftChData_step_2 ;
-							pTmpBuf2 = leftChData_step_2 ;
-							for(i = 0 ; i < (I2S_BUFF_LEN  + LATENCY_LENGTH); i++)
-							{
-								*pTmpBuf1++ = (*pTmpBuf2++) ;
-							}
+							vb_final_filter.out_pads[0] = lpf_filter.out_pads[0];
 						}
 						/******* end of VB   *********/
-
-
-						my_float_memcpy(VB_data_out,&VB_data_out[I2S_BUFF_LEN], LATENCY_LENGTH );
-						my_float_memcpy(&VB_data_out[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH], I2S_BUFF_LEN );
 					}
 					else
 					{
-						my_float_memset(VB_data_out , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
+						vb_final_filter.out_pads[0] = (float*)memory_pool_malloc(dsp_buffers_pool);
+						my_float_memset(vb_final_filter.out_pads[0] , 0 , I2S_BUFF_LEN );
 					}
 					/********* end of LF path    **********/
 
@@ -472,83 +430,78 @@ static void main_thread_func (void * param)
 
 					if(hf_path)
 					{
-						DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_left,&leftChData_step_0[LATENCY_LENGTH],&leftChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
-						DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_right,&rightChData_step_0[LATENCY_LENGTH],&rightChData_step_1[LATENCY_LENGTH],I2S_BUFF_LEN );
+						DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_left, app_I2S_spliter.out_pads[0] ,I2S_BUFF_LEN );
+						memory_pool_free(dsp_buffers_pool,app_I2S_spliter.out_pads[0]);
+
+						DSP_FUNC_1CH_IN_1CH_OUT(&hpf_filter_right, app_I2S_spliter.out_pads[1] ,I2S_BUFF_LEN );
+						memory_pool_free(dsp_buffers_pool,app_I2S_spliter.out_pads[1]);
 
 					}
 					else
 					{
-						my_float_memset(leftChData_step_1 , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
-						my_float_memset(rightChData_step_1 , 0 , I2S_BUFF_LEN + LATENCY_LENGTH);
+						hpf_filter_left.out_pads[0] = app_I2S_spliter.out_pads[0];
+						my_float_memset(hpf_filter_left.out_pads[0] , 0 , I2S_BUFF_LEN  );
+
+						hpf_filter_right.out_pads[0] = app_I2S_spliter.out_pads[1];
+						my_float_memset(hpf_filter_right.out_pads[0] , 0 , I2S_BUFF_LEN  );
 					}
-
-
-					DSP_FUNC_1CH_IN_1CH_OUT(&leftChanelEQ,&leftChData_step_1[LATENCY_LENGTH],&leftChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
-					DSP_FUNC_1CH_IN_1CH_OUT(&rightChanelEQ,&rightChData_step_1[LATENCY_LENGTH],&rightChData_step_2[LATENCY_LENGTH],I2S_BUFF_LEN );
-
-					my_float_memcpy_2_buffers( leftChData_step_2 , leftChData_hf_prev,
-							rightChData_step_2 , rightChData_hf_prev , LATENCY_LENGTH);
-					my_float_memcpy_2_buffers( leftChData_hf_prev , &leftChData_step_2[I2S_BUFF_LEN],
-							rightChData_hf_prev , &rightChData_step_2[I2S_BUFF_LEN] , LATENCY_LENGTH);
 
 
 					/********* end of HF path  *********/
 
 
 					/********** collecting LF and HF pathes together with phase change on HF *********/
-					pTmpBuf1 = leftChData_step_2 ;
-					pTmpBuf2 = rightChData_step_2 ;
-					pTmpBuf3 = VB_data_out ;
-					for(i = 0 ; i < (I2S_BUFF_LEN + LATENCY_LENGTH) ; i++)
-					{
-	//					*pTmpBuf1 = -*pTmpBuf1;
-	//					*pTmpBuf2 = -*pTmpBuf2;
-						(*pTmpBuf1++) += (*pTmpBuf3);
-						(*pTmpBuf2++) += (*pTmpBuf3++) ;
-					}
+					DSP_FUNC_2CH_IN_1CH_OUT(&adder_bass_with_left_channel,
+							hpf_filter_left.out_pads[0], vb_final_filter.out_pads[0], I2S_BUFF_LEN );
+					memory_pool_free(dsp_buffers_pool,hpf_filter_left.out_pads[0]);
+
+					DSP_FUNC_2CH_IN_1CH_OUT(&adder_bass_with_right_channel,
+							hpf_filter_right.out_pads[0],vb_final_filter.out_pads[0], I2S_BUFF_LEN );
+					memory_pool_free(dsp_buffers_pool,hpf_filter_right.out_pads[0]);
+
+					memory_pool_free(dsp_buffers_pool,vb_final_filter.out_pads[0]);
+
+
 					/********** end of collecting LF and HF pathes together  *********/
 
 
 
 		#else  // without X.O
-				DSP_FUNC_1CH_IN_1CH_OUT(&leftChanelEQ,leftChData_step_0,leftChData_step_2,I2S_BUFF_LEN);
-				DSP_FUNC_1CH_IN_1CH_OUT(&rightChanelEQ,rightChData_step_0,rightChData_step_2,I2S_BUFF_LEN);
+					adder_bass_with_left_channel_Pad_Out_0 = app_I2S_spliter.out_pads[0];
+					adder_bass_with_right_channel_Pad_Out_0 = app_I2S_spliter.out_pads[1];
 		#endif //   X.O
 
 				}//if (2==loopback )
 
-				if((0 != compressor_ratio) && (0==loopback))
+				DSP_FUNC_1CH_IN_1CH_OUT(&leftChanelEQ, adder_bass_with_left_channel.out_pads[0] ,I2S_BUFF_LEN );
+				memory_pool_free(dsp_buffers_pool,adder_bass_with_left_channel.out_pads[0]);
+
+				DSP_FUNC_1CH_IN_1CH_OUT(&rightChanelEQ, adder_bass_with_right_channel.out_pads[0] ,I2S_BUFF_LEN );
+				memory_pool_free(dsp_buffers_pool,adder_bass_with_right_channel.out_pads[0]);
+
+				if((0 != compressor_ratio) /*&& (0==loopback)*/)
 				{
-					DSP_FUNC_2CH_IN_2CH_OUT(&compressor_limiter,leftChData_step_2,rightChData_step_2,
-							leftChData_step_1,rightChData_step_1,
-							I2S_BUFF_LEN + LATENCY_LENGTH);
+					DSP_FUNC_2CH_IN_2CH_OUT(&compressor_limiter,
+							leftChanelEQ.out_pads[0],rightChanelEQ.out_pads[0], I2S_BUFF_LEN );
+					memory_pool_free(dsp_buffers_pool,leftChanelEQ.out_pads[0]);
+					memory_pool_free(dsp_buffers_pool,rightChanelEQ.out_pads[0]);
+
 
 				}
 				else
 				{
-					my_float_memcpy_2_buffers( leftChData_step_1 , leftChData_step_2,
-							rightChData_step_1 , rightChData_step_2 , I2S_BUFF_LEN);
-				}
-
-
-				pTmpBuf1 = leftChData_step_1 ;
-				pTmpBuf2 = rightChData_step_1 ;
-				for(i = 0 ; i < (I2S_BUFF_LEN); i++)
-				{
-					*pTmpBuf1 = *pTmpBuf1 * FLOAT_NORMALIZER;
-					*pTxBuf = (buffer_type_t)(*pTmpBuf1++)		;// pTxBuf[2*i]
-//					*pTxBuf = *pTxBuf & 0x00ffffff;
-					pTxBuf++;
-
-					*pTmpBuf2 = *pTmpBuf2 * FLOAT_NORMALIZER;
-					*pTxBuf = (buffer_type_t)(*pTmpBuf2++); // pTxBuf[2*i + 1]
-//					*pTxBuf = *pTxBuf & 0x00ffffff;
-					pTxBuf++;
+					compressor_limiter.out_pads[0] = leftChanelEQ.out_pads[0] ;
+					compressor_limiter.out_pads[1] = rightChanelEQ.out_pads[0];
 				}
 
 
 
+				DSP_FUNC_2CH_IN_1CH_OUT_NO_OUTPUT_ALLOCATION(&app_I2S_mixer,
+						compressor_limiter.out_pads[0],compressor_limiter.out_pads[1] ,
+						(float*)pTxBuf,  	I2S_BUFF_LEN );
 
+				memory_pool_free(dsp_buffers_pool,compressor_limiter.out_pads[0] );
+				memory_pool_free(dsp_buffers_pool,compressor_limiter.out_pads[1] );
 
 			}//if (1==loopback )
 
@@ -659,23 +612,76 @@ uint8_t app_dev_set_cuttof()
 uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 		, void * aIoctl_param1 , void * aIoctl_param2)
 {
-
+	float threshold = HIGH_THRESHOLD_VALUE;
+	set_channel_weight_t ch_weight;
+	uint8_t retVal;
 	switch(aIoctl_num)
 	{
 		case IOCTL_DEVICE_START :
 
 			/* Create an application thread */
 
-			equalizer_api_init_dsp_descriptor(&lpf_filter);
+			dsp_buffers_pool = memory_pool_init(4 , I2S_BUFF_LEN * sizeof(float));
+
+			/**************  I2S splitter and mixer  *************/
+			retVal = I2S_splitter_api_init_dsp_descriptor(&app_I2S_spliter);
+			if(retVal) while(1);
+			DSP_IOCTL_0_PARAMS(&app_I2S_spliter , IOCTL_DEVICE_START );
+
+			retVal = I2S_mixer_api_init_dsp_descriptor(&app_I2S_mixer);
+			if(retVal) while(1);
+			DSP_IOCTL_0_PARAMS(&app_I2S_mixer , IOCTL_DEVICE_START );
+
+
+
+			/**************   mixers  *************/
+			retVal = mixer_api_init_dsp_descriptor(&stereo_to_mono);
+			if(retVal) while(1);
+			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_NUM_OF_CHANNELS , ((void*)2) );
+			ch_weight.channel_num = 0;
+			ch_weight.weight = 0.5;
+			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+			ch_weight.channel_num = 1;
+			ch_weight.weight = 0.5;
+			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+			DSP_IOCTL_0_PARAMS(&stereo_to_mono , IOCTL_DEVICE_START );
+
+			retVal = mixer_api_init_dsp_descriptor(&adder_bass_with_left_channel);
+			if(retVal) while(1);
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_NUM_OF_CHANNELS , ((void*)2) );
+			ch_weight.channel_num = 0;
+			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+			ch_weight.channel_num = 1;
+			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+			DSP_IOCTL_0_PARAMS(&adder_bass_with_left_channel , IOCTL_DEVICE_START );
+
+			retVal = mixer_api_init_dsp_descriptor(&adder_bass_with_right_channel);
+			if(retVal) while(1);
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_NUM_OF_CHANNELS , ((void*)2) );
+			ch_weight.channel_num = 0;
+			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+			ch_weight.channel_num = 1;
+			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+			DSP_IOCTL_0_PARAMS(&adder_bass_with_right_channel , IOCTL_DEVICE_START );
+
+
+			retVal = equalizer_api_init_dsp_descriptor(&lpf_filter);
+			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
 			DSP_IOCTL_0_PARAMS(&lpf_filter , IOCTL_DEVICE_START );
 
 
-			equalizer_api_init_dsp_descriptor(&hpf_filter_left);
+			retVal = equalizer_api_init_dsp_descriptor(&hpf_filter_left);
+			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
 			DSP_IOCTL_0_PARAMS(&hpf_filter_left , IOCTL_DEVICE_START );
 
-			equalizer_api_init_dsp_descriptor(&hpf_filter_right);
+			retVal = equalizer_api_init_dsp_descriptor(&hpf_filter_right);
+			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
 			DSP_IOCTL_0_PARAMS(&hpf_filter_right , IOCTL_DEVICE_START );
 
@@ -685,7 +691,8 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 //			set_band_biquads.Fc = 78.5;
 //			set_band_biquads.QValue = 0.707;//0.836;//0.7;
 //			set_band_biquads.Gain = 1;
-//			equalizer_api_init_dsp_descriptor(&vb_hpf_filter);
+//			retVal = equalizer_api_init_dsp_descriptor(&vb_hpf_filter);
+//			if(retVal) while(1);
 //			DSP_IOCTL_1_PARAMS(&vb_hpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)4) );
 //			set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
 //			set_band_biquads.band_num = 0;
@@ -699,26 +706,33 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 //			DSP_IOCTL_0_PARAMS(&vb_hpf_filter , IOCTL_DEVICE_START );
 
 
-			equalizer_api_init_dsp_descriptor(&vb_final_filter);
+
+
+			retVal = equalizer_api_init_dsp_descriptor(&vb_final_filter);
+			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)3) );
 			DSP_IOCTL_0_PARAMS(&vb_final_filter , IOCTL_DEVICE_START );
 			app_dev_set_cuttof();
 
 			/**************   eq filters  *************/
-			equalizer_api_init_dsp_descriptor(&leftChanelEQ);
+			retVal = equalizer_api_init_dsp_descriptor(&leftChanelEQ);
+			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&leftChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)7) );
 			DSP_IOCTL_0_PARAMS(&leftChanelEQ , IOCTL_DEVICE_START );
 			equalizer_api_init_dsp_descriptor(&rightChanelEQ);
 			DSP_IOCTL_1_PARAMS(&rightChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)7) );
 			DSP_IOCTL_0_PARAMS(&rightChanelEQ , IOCTL_DEVICE_START );
 
-			compressor_api_init_dsp_descriptor(&compressor_limiter);
-			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , ((void*)(size_t)HIGH_THRESHOLD_VALUE) );
+			retVal = compressor_api_init_dsp_descriptor(&compressor_limiter);
+			if(retVal) while(1);
+			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
+			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LATENCY , ((void*)(size_t)LATENCY_LENGTH) );
 			DSP_IOCTL_0_PARAMS(&compressor_limiter , IOCTL_DEVICE_START );
 
-			compressor_api_init_dsp_descriptor(&vb_limiter);
-			DSP_IOCTL_1_PARAMS(&vb_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , ((void*)(size_t)(0.2 * 0x8000)) );
-			DSP_IOCTL_0_PARAMS(&vb_limiter , IOCTL_DEVICE_START );
+//			retVal = compressor_api_init_dsp_descriptor(&vb_limiter);
+//			if(retVal) while(1);
+//			DSP_IOCTL_1_PARAMS(&vb_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , ((void*)(size_t)(0.8)) );
+//			DSP_IOCTL_0_PARAMS(&vb_limiter , IOCTL_DEVICE_START );
 
 			os_create_task("main" , main_thread_func, 0, MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
 
