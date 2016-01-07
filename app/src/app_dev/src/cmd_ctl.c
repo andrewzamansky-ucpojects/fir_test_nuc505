@@ -12,11 +12,20 @@
 #include <command.h>
 #include "shell_api.h"
 
+#include "dsp_managment_api.h"
+
+extern dsp_descriptor_t vb;
+//extern dsp_descriptor_t vb_hpf_filter;
+extern dsp_descriptor_t vb_final_filter;
+extern dsp_descriptor_t hpf_filter_left;
+extern dsp_descriptor_t hpf_filter_right;
+
+extern dsp_descriptor_t stereo_to_mono;
+extern dsp_descriptor_t compressor_limiter;
+extern dsp_descriptor_t voice_3d;
 
 extern uint8_t loopback ;
-extern uint8_t vb_on;
-extern uint8_t lf_path;
-extern uint8_t hf_path;
+
 /*
  * Subroutine:  do_set_comressor
  *
@@ -43,7 +52,16 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	if(0 == strcmp(argv[1],"vb"))
 	{
-		vb_on = val;
+		if(0 == val)
+		{
+			dsp_managment_api_set_module_control(&vb , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+			dsp_managment_api_set_module_control(&vb_final_filter , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+		}
+		else
+		{
+			dsp_managment_api_set_module_control(&vb , DSP_MANAGMENT_API_MODULE_CONTROL_ON);
+			dsp_managment_api_set_module_control(&vb_final_filter , DSP_MANAGMENT_API_MODULE_CONTROL_ON);
+		}
 	}
 	else if(0 == strcmp(argv[1],"loopback"))
 	{
@@ -51,11 +69,49 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 	else if(0 == strcmp(argv[1],"lf_path"))
 	{
-		lf_path = val;
+		if(0 == val)
+		{
+			dsp_managment_api_set_module_control(&stereo_to_mono , DSP_MANAGMENT_API_MODULE_CONTROL_MUTE);
+		}
+		else
+		{
+			dsp_managment_api_set_module_control(&stereo_to_mono , DSP_MANAGMENT_API_MODULE_CONTROL_ON);
+		}
 	}
 	else if(0 == strcmp(argv[1],"hf_path"))
 	{
-		hf_path = val;
+		if(0 == val)
+		{
+			dsp_managment_api_set_module_control(&hpf_filter_left , DSP_MANAGMENT_API_MODULE_CONTROL_MUTE);
+			dsp_managment_api_set_module_control(&hpf_filter_right , DSP_MANAGMENT_API_MODULE_CONTROL_MUTE);
+		}
+		else
+		{
+			dsp_managment_api_set_module_control(&hpf_filter_left , DSP_MANAGMENT_API_MODULE_CONTROL_ON);
+			dsp_managment_api_set_module_control(&hpf_filter_right , DSP_MANAGMENT_API_MODULE_CONTROL_ON);
+		}
+	}
+	else if(0 == strcmp(argv[1],"compressor"))
+	{
+		if(0 == val)
+		{
+			dsp_managment_api_set_module_control(&compressor_limiter , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+		}
+		else
+		{
+			dsp_managment_api_set_module_control(&compressor_limiter , DSP_MANAGMENT_API_MODULE_CONTROL_ON);
+		}
+	}
+	else if(0 == strcmp(argv[1],"3d"))
+	{
+		if(0 == val)
+		{
+			dsp_managment_api_set_module_control(&voice_3d , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+		}
+		else
+		{
+			dsp_managment_api_set_module_control(&voice_3d , DSP_MANAGMENT_API_MODULE_CONTROL_ON);
+		}
 	}
 
 	return 0;
@@ -63,7 +119,7 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 U_BOOT_CMD(
 	ctl,     255,	0,	do_ctl,
-	"set_comressor band_num filter_type Fc QValue Gain",
+	"ctl band_num vb/loopback/lf_path/hf_path/compressor/3d  0/1",
 	"info   - \n"
 );
 

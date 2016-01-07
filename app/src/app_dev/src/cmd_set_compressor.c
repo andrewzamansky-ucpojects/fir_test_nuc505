@@ -12,8 +12,10 @@
 #include <command.h>
 #include "shell_api.h"
 
+#include "dsp_managment_api.h"
+#include "compressor_api.h"
 
-extern float compressor_ratio ;
+extern dsp_descriptor_t compressor_limiter;
 
 /*
  * Subroutine:  do_set_comressor
@@ -28,7 +30,7 @@ extern float compressor_ratio ;
 int do_set_compressor (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
-
+	float compressor_ratio ;
 
 	if(argc < 2)
 	{
@@ -38,12 +40,13 @@ int do_set_compressor (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 
 
 	compressor_ratio = (float)atof(argv[1]);
+	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RATIO , &compressor_ratio );
 
 	return 0;
 }
 
 U_BOOT_CMD(
 	set_compressor,     255,	0,	do_set_compressor,
-	"set_compressor val",
+	"set_compressor ratio",
 	"info   - \n"
 );
