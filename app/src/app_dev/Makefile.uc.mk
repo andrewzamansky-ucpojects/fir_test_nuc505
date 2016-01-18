@@ -17,6 +17,7 @@ SRC += cmd_set_cutoff.c
 SRC += cmd_set_vb.c
 SRC += cmd_set_voice_3d.c
 SRC += cmd_ctl.c
+SRC += cmd_set_eq_band.c
 
 SPEED_CRITICAL_FILES += app_dev.c
 
