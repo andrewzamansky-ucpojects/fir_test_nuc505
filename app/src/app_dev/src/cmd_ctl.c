@@ -119,7 +119,7 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 U_BOOT_CMD(
 	ctl,     255,	0,	do_ctl,
-	"ctl band_num vb/loopback/lf_path/hf_path/compressor/3d  0/1",
+	"ctl vb/loopback/lf_path/hf_path/compressor/3d  0/1",
 	"info   - \n"
 );
 

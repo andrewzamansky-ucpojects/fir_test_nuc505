@@ -531,7 +531,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			retVal = compressor_api_init_dsp_descriptor(&compressor_limiter);
 			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , ((void*)(size_t)COMPRESSOR_API_TYPE_LOOKAHEAD) );
-			threshold=0.8;
+			threshold=0.9;
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LATENCY , ((void*)(size_t)LATENCY_LENGTH) );
 #else
