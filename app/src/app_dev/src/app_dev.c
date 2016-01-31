@@ -112,8 +112,9 @@ static pdev_descriptor_const  timer_device = &app_timer_inst;
 uint8_t loopback = 0 ;
 
 
+os_mutex_t  control_mutex;
 
-
+dsp_chain_t *pMain_dsp_chain;
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        app_dev_callback                                                                          */
@@ -163,7 +164,9 @@ static void main_thread_func (void * param)
 	uint8_t is_timer_elapsed=1;
 	uint32_t retVal;
 	xQueue = os_create_queue( APP_DEV_CONFIG_MAX_QUEUE_LEN , sizeof(xMessage_t ) );
-	uint64_t cpu_usage_print_timeout = 1000;
+	uint64_t cpu_usage_print_timeout = 2000;
+
+	control_mutex = os_create_mutex();
 
 	DEV_IOCTL_0_PARAMS(i2s_dev , I2S_ENABLE_OUTPUT_IOCTL );
 
@@ -188,60 +191,15 @@ static void main_thread_func (void * param)
 			}
 			else
 			{
+				os_mutex_take_infinite_wait(control_mutex);
+
 				//******* distribute L-R
 				DSP_SET_SOURCE_BUFFER(&source,DSP_INPUT_PAD_0,(float*)pRxBuf );
 
-				DSP_PROCESS(&app_I2S_spliter, I2S_BUFF_LEN );
 
 
+				DSP_PROCESS_CHAIN(pMain_dsp_chain , I2S_BUFF_LEN );
 
-				/******** LF path **********/
-
-				DSP_PROCESS(&stereo_to_mono, I2S_BUFF_LEN );
-
-				DSP_PROCESS(&lpf_filter, I2S_BUFF_LEN );
-
-				/********  VB  ************/
-				DSP_PROCESS(&vb, I2S_BUFF_LEN );
-
-				DSP_PROCESS(&vb_final_filter, I2S_BUFF_LEN );
-
-				/******* end of VB   *********/
-
-				/********* end of LF path    **********/
-
-
-
-
-
-				/********** HF path *********/
-
-				DSP_PROCESS(&hpf_filter_left, I2S_BUFF_LEN );
-
-				DSP_PROCESS(&hpf_filter_right, I2S_BUFF_LEN );
-
-				DSP_PROCESS(&voice_3d, I2S_BUFF_LEN );
-
-				/********* end of HF path  *********/
-
-
-				/********** collecting LF and HF pathes together with phase change on HF *********/
-				DSP_PROCESS(&adder_bass_with_left_channel, I2S_BUFF_LEN );
-
-				DSP_PROCESS(&adder_bass_with_right_channel, I2S_BUFF_LEN );
-
-				/********** end of collecting LF and HF pathes together  *********/
-
-
-				/********** EQ+Compressor  *********/
-
-				DSP_PROCESS(&leftChanelEQ, I2S_BUFF_LEN );
-
-				DSP_PROCESS(&rightChanelEQ, I2S_BUFF_LEN );
-
-				DSP_PROCESS(&compressor_limiter, I2S_BUFF_LEN );
-
-				/********** end ofEQ+Compressor  *********/
 
 
 				/********** mix 2 channels to I2S bus  *********/
@@ -249,6 +207,7 @@ static void main_thread_func (void * param)
 
 				DSP_PROCESS(&app_I2S_mixer, I2S_BUFF_LEN );
 
+				os_mutex_give(control_mutex);
 
 			}//if (1==loopback )
 
@@ -259,10 +218,14 @@ static void main_thread_func (void * param)
 		{
 			uint8_t cpu_usage_int_part,cpu_usage_res_part;
 			uint32_t cpu_usage;
+			uint32_t limiter_hits;
 			DEV_IOCTL_1_PARAMS(heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
 			cpu_usage_int_part = cpu_usage / 1000;
 			cpu_usage_res_part = cpu_usage - cpu_usage_int_part;
 			PRINTF_DBG("cpu usage = %d.%03d%% \n", cpu_usage_int_part , cpu_usage_res_part);
+			DEV_IOCTL(&compressor_limiter, IOCTL_COMPRESSOR_GET_HIT_COUNTER ,&limiter_hits);
+			PRINTF_DBG("limiter = %d  \n", limiter_hits );
+
 			DEV_IOCTL(timer_device,TIMER_API_SET_COUNTDOWN_VALUE_AND_REST,&cpu_usage_print_timeout);
 		}
 		DEV_IOCTL(timer_device, TIMER_API_CHECK_IF_COUNTDOWN_ELAPSED ,  &is_timer_elapsed );
@@ -296,19 +259,25 @@ static void main_thread_func (void * param)
 /*---------------------------------------------------------------------------------------------------------*/
 uint8_t app_dev_create_signal_flow()
 {
+	pMain_dsp_chain = DSP_CREATE_CHAIN(16);
 	//******* distribute L-R **********/
 	DSP_CREATE_LINK(&source,DSP_OUTPUT_PAD_0,&app_I2S_spliter,DSP_INPUT_PAD_0);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &app_I2S_spliter);
 
 	/******** LF path **********/
 	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_0,&stereo_to_mono,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_1,&stereo_to_mono,DSP_INPUT_PAD_1);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &stereo_to_mono);
 
 	DSP_CREATE_LINK(&stereo_to_mono,DSP_OUTPUT_PAD_0,&lpf_filter,DSP_INPUT_PAD_0);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &lpf_filter);
 
 	/********  VB  ************/
 	DSP_CREATE_LINK(&lpf_filter,DSP_OUTPUT_PAD_0,&vb,DSP_INPUT_PAD_0);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &vb);
 
 	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&vb_final_filter,DSP_INPUT_PAD_0);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &vb_final_filter);
 	/******* end of VB   *********/
 
 	/********* end of LF path    **********/
@@ -317,30 +286,38 @@ uint8_t app_dev_create_signal_flow()
 	/********** HF path *********/
 
 	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_0,&hpf_filter_left,DSP_INPUT_PAD_0);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &hpf_filter_left);
 	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_1,&hpf_filter_right,DSP_INPUT_PAD_0);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &hpf_filter_right);
 
 	DSP_CREATE_LINK(&hpf_filter_left,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&hpf_filter_right,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_1);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &voice_3d);
 
 	/********* end of HF path  *********/
 
 	/********** collecting LF and HF pathes together with phase change on HF *********/
 	DSP_CREATE_LINK(&vb_final_filter,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&voice_3d,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_1);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &adder_bass_with_left_channel);
 
 	DSP_CREATE_LINK(&vb_final_filter,DSP_OUTPUT_PAD_0,&adder_bass_with_right_channel,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&voice_3d,DSP_OUTPUT_PAD_1,&adder_bass_with_right_channel,DSP_INPUT_PAD_1);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &adder_bass_with_right_channel);
 
 	/********** end of collecting LF and HF pathes together  *********/
 
 	/********** EQ+Compressor  *********/
 
 	DSP_CREATE_LINK(&adder_bass_with_left_channel,DSP_OUTPUT_PAD_0,&leftChanelEQ,DSP_INPUT_PAD_0);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &leftChanelEQ);
 
 	DSP_CREATE_LINK(&adder_bass_with_right_channel,DSP_OUTPUT_PAD_0,&rightChanelEQ,DSP_INPUT_PAD_0);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &rightChanelEQ);
 
 	DSP_CREATE_LINK(&leftChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&rightChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_1);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &compressor_limiter);
 
 	/********** end ofEQ+Compressor  *********/
 
@@ -516,8 +493,11 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)3) );
 			DSP_IOCTL_0_PARAMS(&vb_final_filter , IOCTL_DEVICE_START );
-			dsp_managment_api_set_module_control(&vb_final_filter , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
-			app_dev_set_cuttof();
+			dsp_managment_api_set_module_control(&vb_final_filter , DSP_MANAGMENT_API_MODULE_CONTROL_MUTE);
+			dsp_managment_api_set_module_control(&lpf_filter , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+
+			dsp_managment_api_set_module_control(&hpf_filter_left , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+			dsp_managment_api_set_module_control(&hpf_filter_right , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);			app_dev_set_cuttof();
 
 			/**************   eq filters  *************/
 			retVal = equalizer_api_init_dsp_descriptor(&leftChanelEQ);
@@ -531,9 +511,9 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			retVal = compressor_api_init_dsp_descriptor(&compressor_limiter);
 			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , ((void*)(size_t)COMPRESSOR_API_TYPE_LOOKAHEAD) );
-			threshold=0.9;
+			threshold=0.95;
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
-			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LATENCY , ((void*)(size_t)LATENCY_LENGTH) );
+			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LOOK_AHEAD_SIZE , ((void*)(size_t)LATENCY_LENGTH) );
 #else
 			{
 				float attack,release,ratio;

@@ -16,8 +16,10 @@
 
 #include "equalizer_api.h"
 #include "common_dsp_api.h"
+#include "os_wrapper.h"
 
 extern dsp_descriptor_t leftChanelEQ,rightChanelEQ;
+extern os_mutex_t  control_mutex;
 
 /*
  * Subroutine:  force_output
@@ -49,6 +51,8 @@ int do_set_eq_band (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		SHELL_REPLY_STR("syntax err\n");
 		return 1;
 	}
+
+	os_mutex_take_infinite_wait(control_mutex);
 
 	set_band_biquads.band_num = atoi(argv[1]);
 
@@ -97,6 +101,8 @@ int do_set_eq_band (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	DSP_IOCTL_1_PARAMS(&leftChanelEQ , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
 	DSP_IOCTL_1_PARAMS(&rightChanelEQ , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+
+	os_mutex_give(control_mutex);
 
 #endif
 	return 0;

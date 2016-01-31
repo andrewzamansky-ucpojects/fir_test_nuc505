@@ -19,7 +19,6 @@ INCLUDE_DIR += $(EXTERNAL_SOURCE_ROOT_DIR)/u-boot/include
 
 SRC = main.c 
 SRC += init.c 
-SRC += cmd_change_volume.c
 SRC += cmd_heap_test.c
 SRC += app_routines.c
 

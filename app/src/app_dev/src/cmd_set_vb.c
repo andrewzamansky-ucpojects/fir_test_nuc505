@@ -13,11 +13,13 @@
 #include "shell_api.h"
 
 #include "dsp_managment_api.h"
+#include "os_wrapper.h"
 
 extern float vb_volume ;
 extern float COMPR_ATTACK ;
 extern float COMPR_REALESE ;
 extern float HARMONICS_GAIN ;
+extern os_mutex_t  control_mutex;
 
 /*
  * Subroutine:  do_set_comressor
@@ -42,10 +44,14 @@ int do_set_vb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	// should be transformed to ioctls !!
 
+	os_mutex_take_infinite_wait(control_mutex);
+
 	vb_volume = (float)atof(argv[1]) /100 * 0.85;
 	HARMONICS_GAIN = (float)atof(argv[2]);
 	COMPR_ATTACK = (float)atof(argv[3]);
 	COMPR_REALESE = (float)atof(argv[4]);
+
+	os_mutex_give(control_mutex);
 
 	return 0;
 }
