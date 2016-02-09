@@ -68,6 +68,7 @@
 
 /* Library includes. */
 //#include "stm32f10x_lib.h"
+#include "_project_defines.h"
 
 /*-----------------------------------------------------------
  * Application specific definitions.

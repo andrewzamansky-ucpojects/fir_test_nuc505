@@ -31,7 +31,7 @@
 
 /*-----------------------------------------------------------*/
 
-extern void vPortSVCHandler(void);
+EXTERN_C_FUNCTION void vPortSVCHandler(void);
 //extern void do_software_interrupt_asm(void);
 extern void xPortPendSVHandler(void);
 extern void xPortSysTickHandler(void);
@@ -177,11 +177,6 @@ void prvSetupHardware( void )
 	PRINTF_API_AddDebugOutput(uart0_dev_wrap);
 
 }
-
-
-
-
-
 
 
 

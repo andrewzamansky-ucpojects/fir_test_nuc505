@@ -14,6 +14,14 @@
 
 #include <stddef.h> // include for NULL
 
+
+#ifdef __cplusplus
+	#define  EXTERN_C_FUNCTION    extern "C"
+#else
+	#define  EXTERN_C_FUNCTION
+#endif
+
+
 /* Configuration of the Cortex-M# Processor and Core Peripherals */
 #define __CM4_REV                 0x0201    /*!< Core Revision r2p1                               */
 #define __NVIC_PRIO_BITS          4         /*!< Number of Bits used for Priority Levels          */

@@ -48,7 +48,7 @@
 #include "included_modules.h"
 
 extern void* __HEAP_END;
-extern unsigned char *gloabal_heap;
+extern unsigned char *global_heap;
 
 
 /*
@@ -64,7 +64,7 @@ extern unsigned char *gloabal_heap;
 int do_heap_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
-	PRINTF_DBG("heap left : 0x%x\n",((unsigned char *)&__HEAP_END) - gloabal_heap);
+	PRINTF_DBG("heap left : 0x%x\n",((unsigned char *)&__HEAP_END) - global_heap);
 
 
 	return 0;

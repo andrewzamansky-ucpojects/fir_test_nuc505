@@ -193,19 +193,13 @@ static void main_thread_func (void * param)
 			{
 				os_mutex_take_infinite_wait(control_mutex);
 
-				//******* distribute L-R
 				DSP_SET_SOURCE_BUFFER(&source,DSP_INPUT_PAD_0,(float*)pRxBuf );
 
+				DSP_SET_SINK_BUFFER(&app_I2S_mixer,DSP_OUTPUT_PAD_0,(float*)pTxBuf );
 
 
 				DSP_PROCESS_CHAIN(pMain_dsp_chain , I2S_BUFF_LEN );
 
-
-
-				/********** mix 2 channels to I2S bus  *********/
-				DSP_SET_SINK_BUFFER(&app_I2S_mixer,DSP_OUTPUT_PAD_0,(float*)pTxBuf );
-
-				DSP_PROCESS(&app_I2S_mixer, I2S_BUFF_LEN );
 
 				os_mutex_give(control_mutex);
 
@@ -324,6 +318,7 @@ uint8_t app_dev_create_signal_flow()
 	/********** mix 2 channels to I2S bus  *********/
 	DSP_CREATE_LINK(&compressor_limiter,DSP_OUTPUT_PAD_0,&app_I2S_mixer,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&compressor_limiter,DSP_OUTPUT_PAD_1,&app_I2S_mixer,DSP_INPUT_PAD_1);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &app_I2S_mixer);
 
 
 	return 0;
