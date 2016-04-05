@@ -1,13 +1,12 @@
-INCLUDE_THIS_COMPONENT := YES 
+INCLUDE_THIS_COMPONENT := y
 
-INCLUDE_DIR =  $(SW_PACKAGES_ROOT_DIR)/u_boot_shell/include
-INCLUDE_DIR += $(EXTERNAL_SOURCE_ROOT_DIR)/u-boot/include
 
-#DEFINES = 
+#DEFINES =
 
-#CFLAGS = 
+#CFLAGS =
 
-#ASMFLAGS =  
+#ASMFLAGS =
+
 
 
 
@@ -20,6 +19,7 @@ SRC += cmd_set_voice_3d.c
 SRC += cmd_ctl.c
 SRC += cmd_set_eq_band.c
 SRC += cmd_set_volume.c
+SRC += cmd_set_i2s_loopback.c
 
 SPEED_CRITICAL_FILES += app_dev.c
 

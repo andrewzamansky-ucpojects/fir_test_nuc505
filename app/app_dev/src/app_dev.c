@@ -172,7 +172,7 @@ static void main_thread_func (void * param)
 
     while (1)
     {
-    	retVal = os_queue_receive_with_timeout( xQueue , &( xRxMessage ) , 1000 );
+		retVal = os_queue_receive_with_timeout( xQueue , &( xRxMessage ) , 1000 );
 		if( OS_QUEUE_RECEIVE_SUCCESS ==  retVal)
 		{
 
@@ -338,49 +338,52 @@ uint8_t app_dev_create_signal_flow()
 /*---------------------------------------------------------------------------------------------------------*/
 uint8_t app_dev_set_cuttof()
 {
-	set_band_biquads_t  set_band_biquads;
+	equalizer_api_band_set_t band_set;
+	equalizer_api_band_set_params_t  *p_band_set_params;
 
-	set_band_biquads.Gain = 1;
+	p_band_set_params = &band_set.band_set_params;
 
-	set_band_biquads.Fc = cutoff_freq;
-	set_band_biquads.QValue = 1;//0.836;//0.707;
-	set_band_biquads.filter_mode = BIQUADS_BANDPASS_MODE;
-	set_band_biquads.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.filter_mode = BIQUADS_BANDPASS_MODE;
-	set_band_biquads.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	p_band_set_params->Gain = 1;
 
-	set_band_biquads.Fc = cutoff_freq;
-	set_band_biquads.QValue = 1;//0.836;//0.707;
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	set_band_biquads.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	set_band_biquads.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	p_band_set_params->Fc = cutoff_freq;
+	p_band_set_params->QValue = 1;//0.836;//0.707;
+	p_band_set_params->filter_mode = BIQUADS_BANDPASS_MODE;
+	band_set.band_num = 0;
+	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	p_band_set_params->filter_mode = BIQUADS_BANDPASS_MODE;
+	band_set.band_num = 1;
+	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
 
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	set_band_biquads.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	set_band_biquads.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	p_band_set_params->Fc = cutoff_freq;
+	p_band_set_params->QValue = 1;//0.836;//0.707;
+	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+	band_set.band_num = 0;
+	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
+	band_set.band_num = 1;
+	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
 
-	set_band_biquads.QValue = 1;//0.836;//0.707;
-	set_band_biquads.Gain = 1;
-	set_band_biquads.Fc = cutoff_freq * 3.4;
-	set_band_biquads.filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
-	set_band_biquads.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.Fc = cutoff_freq * 0.2;
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	set_band_biquads.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
-	set_band_biquads.QValue = 1;//0.836;//0.707;
-	set_band_biquads.filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	set_band_biquads.band_num = 2;
-	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &set_band_biquads );
+	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+	band_set.band_num = 0;
+	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
+	band_set.band_num = 1;
+	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+
+	p_band_set_params->QValue = 1;//0.836;//0.707;
+	p_band_set_params->Gain = 1;
+	p_band_set_params->Fc = cutoff_freq * 3.4;
+	p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
+	band_set.band_num = 0;
+	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	p_band_set_params->Fc = cutoff_freq * 0.2;
+	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
+	band_set.band_num = 1;
+	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	p_band_set_params->QValue = 1;//0.836;//0.707;
+	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+	band_set.band_num = 2;
+	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
 
 
 	return 0;

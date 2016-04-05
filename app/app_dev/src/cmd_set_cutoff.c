@@ -63,4 +63,3 @@ U_BOOT_CMD(
 	"set_cutoff Fc ",
 	"info   - \n"
 );
-
