@@ -117,10 +117,8 @@ void	NVIC_APP_Init(void)
 	NVIC_API_Init();
 	NVIC_API_RegisterInt(SVCall_IRQn , vPortSVCHandler);
 //	NVIC_API_RegisterInt(NVIC_API_Int_SVCall , do_software_interrupt_asm);
-//#ifndef _NO_OS
 	NVIC_API_RegisterInt(PendSV_IRQn , xPortPendSVHandler);
 //	NVIC_API_RegisterInt(SysTick_IRQn , xPortSysTickHandler);
-//#endif
 
 }
 

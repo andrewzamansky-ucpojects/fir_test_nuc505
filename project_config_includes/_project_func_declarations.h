@@ -19,7 +19,7 @@
 
 void busy_delay(uint32_t mSec);
 
-#ifdef ARMCC
+#ifdef CONFIG_ARMCC
  static size_t strnlen(const char *s, size_t n){return strlen(s);}
 #endif
 
