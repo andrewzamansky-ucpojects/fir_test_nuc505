@@ -11,14 +11,14 @@
 
 
 /********  includes *********************/
-#include "app_dev_config.h"
+#include "_project.h"
 #include "dev_managment_api.h" // for device manager defines and typedefs
 
 #include "app_dev_api.h"
 
 #include "app_dev.h"
 
-
+#define DEBUG
 #include "PRINTF_api.h"
 
 #include "os_wrapper.h"
@@ -37,7 +37,8 @@
 #include "math.h"
 #include "memory_pool_api.h"
 
- #include "arm_math.h"
+#include "cpu_config.h"
+#include "arm_math.h"
 
 /********  defines *********************/
 #if (2 == NUM_OF_BYTES_PER_AUDIO_WORD)
@@ -47,6 +48,8 @@
 	typedef int32_t	buffer_type_t	;
 #endif
 
+
+#define APP_DEV_CONFIG_MAX_QUEUE_LEN					( 2 )
 
 /********  types  *********************/
 
@@ -225,19 +228,9 @@ static void main_thread_func (void * param)
 		DEV_IOCTL(timer_device, TIMER_API_CHECK_IF_COUNTDOWN_ELAPSED ,  &is_timer_elapsed );
 
 
-#if ((1==INCLUDE_uxTaskGetStackHighWaterMark ) && (1==CONFIG_FREE_RTOS))
-		{
-			static  size_t stackLeft,minStackLeft=0xffffffff;
 
-			stackLeft = uxTaskGetStackHighWaterMark( NULL );
-			if(minStackLeft > stackLeft)
-			{
-				minStackLeft = stackLeft;
-				PRINTF_DBG("%s   stack left = %d  \r\n" ,
-						__FUNCTION__   ,minStackLeft);
-			}
-		}
-#endif
+		os_stack_test();
+
     }
 }
 

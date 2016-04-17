@@ -14,9 +14,8 @@
 #include "dsp_managment_api.h"
 #include "os_wrapper.h"
 
-extern float COMPR_ATTACK ;
-extern float COMPR_REALESE ;
-extern float HARMONICS_GAIN ;
+extern float vb_volume ;
+
 extern os_mutex_t  control_mutex;
 
 /*
@@ -29,12 +28,12 @@ extern os_mutex_t  control_mutex;
  * Return:      None
  *
  */
-int do_set_vb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_set_vbi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
 
 
-	if(argc < 4)
+	if(argc < 2)
 	{
 		SHELL_REPLY_STR("syntax err\n");
 		return 1;
@@ -44,9 +43,7 @@ int do_set_vb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	os_mutex_take_infinite_wait(control_mutex);
 
-	HARMONICS_GAIN = (float)atof(argv[1]);
-	COMPR_ATTACK = (float)atof(argv[2]);
-	COMPR_REALESE = (float)atof(argv[3]);
+	vb_volume = (float)atof(argv[1]) /100 * 0.85;
 
 	os_mutex_give(control_mutex);
 
@@ -54,7 +51,7 @@ int do_set_vb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 
 U_BOOT_CMD(
-	set_vb,     255,	0,	do_set_vb,
-	"set_vb  harmonic_vol attack release",
+	set_vbi,     255,	0,	do_set_vbi,
+	"set_vbi  vol",
 	"info   - \n"
 );

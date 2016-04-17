@@ -2,7 +2,7 @@
 #ifndef _app_dev_static_dev_macros_h_
 #define _app_dev_static_dev_macros_h_
 
-#include "app_dev_config.h"
+#include "_project.h"
 #include "dev_managment_api.h" // for device manager defines and typedefs
 
 uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num

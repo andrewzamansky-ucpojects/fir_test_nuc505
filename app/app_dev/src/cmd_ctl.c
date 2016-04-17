@@ -2,8 +2,7 @@
 /*
  *  cmd_set_comressor.c
  */
-#include "dev_managment_config.h"
-#include "src/_dev_managment_prerequirements_check.h"// should be after dev_managment_config.h
+#include "_project.h"
 #include <stdio.h>
 #include <string.h>
 

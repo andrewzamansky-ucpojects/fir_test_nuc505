@@ -39,9 +39,7 @@
 /*
  *  cmd_get_serial.c
  */
-#include "printf_config.h"
-#include "dev_managment_api.h" // for device manager defines and typedefs
-#include "src/_printf_prerequirements_check.h" // should be after {printf_config.h,dev_managment_api.h}
+#include "_project.h"
 
 #include <command.h>
 #include "shell_api.h"

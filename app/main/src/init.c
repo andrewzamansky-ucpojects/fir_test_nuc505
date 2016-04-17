@@ -17,6 +17,9 @@
 
 #include "NVIC_api.h"
 
+#define DEBUG
+#include "PRINTF_api.h"
+
 #include "app_dev_api.h"
 
 #include "gpio.h"

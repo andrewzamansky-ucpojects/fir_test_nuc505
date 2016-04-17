@@ -1,5 +1,5 @@
 /*
- * file :cortexM_systick_config.h
+ * file : _project.h
  *
  *
  *
@@ -8,8 +8,8 @@
  *
  */
 
-#ifndef _cortexM_systick_config_H
-#define _cortexM_systick_config_H
+#ifndef _project_H
+#define _project_H
 
 #include "_project_typedefs.h"
 #include "_project_defines.h"

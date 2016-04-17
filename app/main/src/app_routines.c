@@ -19,6 +19,8 @@
 #include "heartbeat_api.h"
 #include "hw_timer_api.h"
 
+#define DEBUG
+#include "PRINTF_api.h"
 /*-----------------------------------------------------------*/
 
 

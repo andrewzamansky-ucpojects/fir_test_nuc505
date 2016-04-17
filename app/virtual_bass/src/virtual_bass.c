@@ -12,10 +12,7 @@
 
 /********  includes *********************/
 
-#include "virtual_bass_config.h"
-#include "dev_managment_api.h" // for device manager defines and typedefs
-#include "dsp_managment_api.h" // for device manager defines and typedefs
-#include "_virtual_bass_prerequirements_check.h" // should be after {virtual_bass_config.h,dev_managment_api.h}
+#include "_virtual_bass_prerequirements_check.h"
 
 #include "virtual_bass_api.h" //place first to test that header file is self-contained
 #include "virtual_bass.h"
@@ -23,7 +20,8 @@
 
 #include "math.h"
 
-#ifdef _USE_DSP_
+#ifdef PROJECT_USE_DSP
+  #include "cpu_config.h"
   #include "arm_math.h"
 #endif
 
@@ -45,13 +43,8 @@
 
 
 /***********   local variables    **************/
-#if VIRTUAL_BASS_CONFIG_NUM_OF_DYNAMIC_INSTANCES>0
-
-	static VIRTUAL_BASS_Instance_t VIRTUAL_BASS_InstanceParams[VIRTUAL_BASS_CONFIG_NUM_OF_DYNAMIC_INSTANCES] = { {0} };
-	static uint16_t usedInstances =0 ;
 
 
-#endif // for VIRTUAL_BASS_CONFIG_NUM_OF_DYNAMIC_INSTANCES>0
 
 //#define COMPR_ATTACK	0.998609f
 //#define COMPR_REALESE	 0.987032f
@@ -249,11 +242,6 @@ uint8_t virtual_bass_ioctl(void * const aHandle ,const uint8_t aIoctl_num , void
 }
 
 
-
-
-
-#if VIRTUAL_BASS_CONFIG_NUM_OF_DYNAMIC_INSTANCES>0
-
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        VIRTUAL_BASS_API_Init_Dev_Descriptor                                                                          */
 /*                                                                                                         */
@@ -268,10 +256,11 @@ uint8_t virtual_bass_ioctl(void * const aHandle ,const uint8_t aIoctl_num , void
 uint8_t  virtual_bass_api_init_dsp_descriptor(pdsp_descriptor aDspDescriptor)
 {
 	VIRTUAL_BASS_Instance_t *pInstance;
-	if(NULL == aDspDescriptor) return 1;
-	if (usedInstances >= VIRTUAL_BASS_CONFIG_NUM_OF_DYNAMIC_INSTANCES) return 1;
 
-	pInstance = &VIRTUAL_BASS_InstanceParams[usedInstances ];
+	if(NULL == aDspDescriptor) return 1;
+
+	pInstance = (VIRTUAL_BASS_Instance_t *)malloc(sizeof(VIRTUAL_BASS_Instance_t));
+	if(NULL == pInstance) return 1;
 
 	aDspDescriptor->handle = pInstance;
 	aDspDescriptor->ioctl = virtual_bass_ioctl;
@@ -279,9 +268,7 @@ uint8_t  virtual_bass_api_init_dsp_descriptor(pdsp_descriptor aDspDescriptor)
 	pInstance->envelope_folower = 0 ;
 	pInstance->prev_x =  0 ;
 	pInstance->prev_harmonic_out = 0;
-	usedInstances++;
 
 	return 0 ;
 
 }
-#endif  // for VIRTUAL_BASS_CONFIG_NUM_OF_DYNAMIC_INSTANCES>0

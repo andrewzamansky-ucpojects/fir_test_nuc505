@@ -2,8 +2,7 @@
 /*
  *  cmd_set_comressor.c
  */
-#include "dev_managment_config.h"
-#include "src/_dev_managment_prerequirements_check.h"// should be after dev_managment_config.h
+#include "_project.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -31,12 +30,12 @@ extern os_mutex_t  control_mutex;
  * Return:      None
  *
  */
-int do_set_voice_3d (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_set_sidesi (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
 	float gain;
 
-	if(argc < 4)
+	if(argc < 2)
 	{
 		SHELL_REPLY_STR("syntax err\n");
 		return 1;
@@ -47,10 +46,6 @@ int do_set_voice_3d (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	gain = (float)atof(argv[1]);
 	DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_MEDIUM_GAIN , &gain );
-	gain = (float)atof(argv[2]);
-	DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_SIDE_GAIN , &gain );
-	gain =  (float)atof(argv[3]);
-	DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_3D_GAIN , &gain );
 
 	os_mutex_give(control_mutex);
 
@@ -58,7 +53,7 @@ int do_set_voice_3d (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 
 U_BOOT_CMD(
-	set_voice_3d,     255,	0,	do_set_voice_3d,
-	"set_voice_3d m-gain s-gain 3d-gain ",
+	set_sidesi,     255,	0,	do_set_sidesi,
+	"set_sidesi gain ",
 	"info   - \n"
 );

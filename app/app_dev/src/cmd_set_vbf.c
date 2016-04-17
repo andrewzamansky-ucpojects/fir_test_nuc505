@@ -11,13 +11,17 @@
 #include <command.h>
 #include "shell_api.h"
 
-#include "dsp_managment_api.h"
+#include "equalizer_api.h"
+#include "common_dsp_api.h"
+
 #include "os_wrapper.h"
 
-extern float COMPR_ATTACK ;
-extern float COMPR_REALESE ;
-extern float HARMONICS_GAIN ;
+extern float cutoff_freq ;
 extern os_mutex_t  control_mutex;
+
+
+
+extern uint8_t app_dev_set_cuttof();
 
 /*
  * Subroutine:  do_set_comressor
@@ -29,24 +33,24 @@ extern os_mutex_t  control_mutex;
  * Return:      None
  *
  */
-int do_set_vb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_set_vbf (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
 
 
-	if(argc < 4)
+	if(argc < 2)
 	{
 		SHELL_REPLY_STR("syntax err\n");
 		return 1;
 	}
 
-	// should be transformed to ioctls !!
+
+
+	cutoff_freq = (float)atof(argv[1]);
 
 	os_mutex_take_infinite_wait(control_mutex);
 
-	HARMONICS_GAIN = (float)atof(argv[1]);
-	COMPR_ATTACK = (float)atof(argv[2]);
-	COMPR_REALESE = (float)atof(argv[3]);
+	app_dev_set_cuttof();
 
 	os_mutex_give(control_mutex);
 
@@ -54,7 +58,7 @@ int do_set_vb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 
 U_BOOT_CMD(
-	set_vb,     255,	0,	do_set_vb,
-	"set_vb  harmonic_vol attack release",
+	set_vbf,     255,	0,	do_set_vbf,
+	"set_vbf Fc ",
 	"info   - \n"
 );

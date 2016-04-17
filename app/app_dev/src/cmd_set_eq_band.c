@@ -2,8 +2,7 @@
 /*
  *  cmd_set_eq_band.c
  */
-#include "dev_managment_config.h"
-#include "src/_dev_managment_prerequirements_check.h"// should be after dev_managment_config.h
+#include "_project.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -34,11 +33,8 @@ extern os_mutex_t  control_mutex;
 int do_set_eq_band (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
-
-
 #if 0 // ffmpeg
-	if(argc < 3)
-	{
+	if(argc < 3) {
 		SHELL_REPLY_STR("err . syntax : set_eq_band filter_name filter_params\n");
 		return 1;
 	}
@@ -47,13 +43,12 @@ int do_set_eq_band (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	equalizer_api_band_set_t band_set;
 	equalizer_api_band_set_params_t  *p_band_set_params;
 
-	if(argc < 5)
-	{
+	if(argc < 5)  {
 		SHELL_REPLY_STR("syntax err\n");
 		return 1;
 	}
 
-	band_set.band_num = atoi(argv[1])-1;
+	band_set.band_num = atoi(argv[2])-1;
 	p_band_set_params = &band_set.band_set_params;
 	DSP_IOCTL_1_PARAMS(&leftChanelEQ , IOCTL_EQUALIZER_GET_BAND_BIQUADS, &band_set );
 
@@ -64,39 +59,24 @@ int do_set_eq_band (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 
 
-	if (0 == strcmp(argv[6],"lpf"))
-	{
+	if (0 == strcmp(argv[6],"lpf")) {
 		p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
 	}
-	else if (0 == strcmp(argv[6],"hpf"))
-	{
+	else if (0 == strcmp(argv[6],"hpf")) {
 		p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	}
-	else if (0 == strcmp(argv[6],"peak"))
-	{
+	} else if (0 == strcmp(argv[6],"peak")) {
 		p_band_set_params->filter_mode = BIQUADS_PEAK_MODE;
-	}
-	else if (0 == strcmp(argv[6],"ls"))
-	{
+	} else if (0 == strcmp(argv[6],"ls")) {
 		p_band_set_params->filter_mode = BIQUADS_LOWSHELF_MODE;
-	}
-	else if (0 == strcmp(argv[6],"hs"))
-	{
+	} else if (0 == strcmp(argv[6],"hs"))	{
 		p_band_set_params->filter_mode = BIQUADS_HIGHSHELF_MODE;
-	}
-	else if (0 == strcmp(argv[6],"lpf_1_pole"))
-	{
+	} else if (0 == strcmp(argv[6],"lpf_1_pole"))	{
 		p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_1_POLE;
-	}
-	else if (0 == strcmp(argv[6],"hpf_1_pole"))
-	{
+	} else if (0 == strcmp(argv[6],"hpf_1_pole")) {
 		p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	}
-	else if (0 == strcmp(argv[6],"transparent"))
-	{
+	} else if (0 == strcmp(argv[6],"bypass"))	{
 		p_band_set_params->filter_mode = BIQUADS_TRANSPARENT_MODE;
-	}	else
-	{
+	}	else {
 		SHELL_REPLY_STR("filter mode uknown\n");
 		return 1;
 	}

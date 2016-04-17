@@ -2,10 +2,7 @@
 #ifndef _virtual_bass_API_H_
 #define _virtual_bass_API_H_
 
-#include "virtual_bass_config.h"
-#include "dev_managment_api.h" // for device manager defines and typedefs
-#include "dsp_managment_api.h" // for device manager defines and typedefs
-#include "src/_virtual_bass_prerequirements_check.h" // should be after {virtual_bass_config.h,dev_managment_api.h}
+#include "src/_virtual_bass_prerequirements_check.h"
 
 #include "common_dsp_api.h"
 

@@ -2,8 +2,7 @@
 /*
  *  cmd_set_comressor.c
  */
-#include "dev_managment_config.h"
-#include "src/_dev_managment_prerequirements_check.h"// should be after dev_managment_config.h
+#include "_project.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -30,7 +29,7 @@ extern os_mutex_t  control_mutex;
  * Return:      None
  *
  */
-int do_set_volume (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_set_vol (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	set_channel_weight_t ch_weight;
 
@@ -67,7 +66,7 @@ int do_set_volume (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 
 U_BOOT_CMD(
-	set_volume,     255,	0,	do_set_volume,
-	"set_volume",
+	set_vol,     255,	0,	do_set_vol,
+	"set_vol",
 	"info   - \n"
 );

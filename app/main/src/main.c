@@ -75,7 +75,6 @@
 #include "assert.h"
 
 
-#include "printf_api.h"
 
 #include "os_wrapper.h"
 
