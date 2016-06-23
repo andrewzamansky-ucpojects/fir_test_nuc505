@@ -21,7 +21,7 @@ typedef enum
 
 #include "src/app_dev_static_dev_macros.h"
 
-#define APP_API_CREATE_STATIC_DEV(dev,dev_name   ) \
-			__APP_API_CREATE_STATIC_DEV(dev,dev_name   )
+#define APP_API_CREATE_STATIC_DEV(pdev   ) \
+			__APP_API_CREATE_STATIC_DEV(pdev   )
 
 #endif

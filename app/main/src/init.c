@@ -8,14 +8,12 @@
 //#include "assert.h"
 
 #include "dev_managment_api.h"
-#include "clocks_control_nuc505_api.h"
+#include "clocks_api.h"
 
 
 #include "included_modules.h"
 
-#include "NUC505Series.h"
 
-#include "NVIC_api.h"
 
 #define DEBUG
 #include "PRINTF_api.h"
@@ -26,156 +24,97 @@
 
 #include "cortexM_systick_api.h"
 #include "heartbeat_api.h"
-
-/*-----------------------------------------------------------*/
-
-
+#include "u_boot_shell_api.h"
 
 
 /*-----------------------------------------------------------*/
 
-EXTERN_C_FUNCTION void vPortSVCHandler(void);
-//extern void do_software_interrupt_asm(void);
-extern void xPortPendSVHandler(void);
-extern void xPortSysTickHandler(void);
+
 
 #define	RX_BUFF_SIZE	256
 uint8_t rx_buff[RX_BUFF_SIZE];
 
-
+#define CORE_CLOCK_RATE		96000000
+#define OS_TICK_IN_MICRO_SEC		1000
 void heartbeat_callback(void);
+void app_tick_callback(void);
+void app_idle_hook(void);
 
-CORTEXM_SYSTICK_API_CREATE_STATIC_DEV(systick_dev_inst,"systick",96000000 ,
-		1000 , TIMER_API_PERIODIC_MODE , xPortSysTickHandler );
+CORTEXM_SYSTICK_API_CREATE_STATIC_DEV(systick_dev ,
+		OS_TICK_IN_MICRO_SEC , TIMER_API_PERIODIC_MODE , NULL );
 
-HEARTBEAT_API_CREATE_STATIC_DEV(heartbeat_dev_inst,"hrtbeat",heartbeat_callback , systick_dev_inst);
+HEARTBEAT_API_CREATE_STATIC_DEV(heartbeat_dev ,heartbeat_callback , systick_dev);
 
-UART_NUC505_API_CREATE_STATIC_DEV(uart_dev_inst,"uart0",0,uart_wrap_dev_inst);
+UART_NUC505_API_CREATE_STATIC_DEV(uart0_dev , UART_NUC505_API_UART_ID_0 , uart0_wrap_dev , 115200);
 
-SW_UART_WRAPPER_API_CREATE_STATIC_DEV(uart_wrap_dev_inst,"swuart",
-		uart_dev_inst,shell_dev_inst , rx_buff,RX_BUFF_SIZE);
+SW_UART_WRAPPER_API_CREATE_STATIC_DEV(uart0_wrap_dev , uart0_dev ,shell_dev , rx_buff,RX_BUFF_SIZE);
 
-//SW_UART_WRAPPER_API_CREATE_STATIC_DEV(uart_wrap_dev_inst,"swuart",
-//		uart_dev_inst,dummy_dev , rx_buff,RX_BUFF_SIZE);
+SHELL_API_CREATE_STATIC_DEV(shell_dev , uart0_wrap_dev);
 
-SHELL_API_CREATE_STATIC_DEV(shell_dev_inst,"shell",uart_wrap_dev_inst);
+U_BOOT_SHELL_API_CREATE_STATIC_DEV(u_boot_shell_dev , shell_dev );
 
-APP_API_CREATE_STATIC_DEV(app_dev_inst,"app"   );
+APP_API_CREATE_STATIC_DEV(app_dev);
 
-I2S_NUC505_API_CREATE_STATIC_DEV(i2s_dev_inst,"i2s",app_dev_inst);
+I2S_NUC505_API_CREATE_STATIC_DEV(i2s_dev , app_dev);
 
-GPIO_NUC505_API_CREATE_STATIC_DEV(heartbeat_gpio_dev_inst,"ioHrt" , GPIO_NUC505_API_PORT_C ,
+GPIO_NUC505_API_CREATE_STATIC_DEV(heartbeat_gpio_dev , GPIO_NUC505_API_PORT_C ,
 		0x00000008 ,GPIO_NUC505_API_MODE_OUT_PP);
 
-//ARM_SH_API_CREATE_STATIC_DEV(sh_dev,"sh_arm");
-//
-//SW_UART_WRAPPER_API_CREATE_STATIC_DEV(sh_wrap_dev,"swu_sh",
-//		sh_dev,dummy_dev , NULL,0);
-//
-//
-//SPI_STM32F10X_API_CREATE_STATIC_DEV(spi_dev,"spi"  );
-//
-//GPIO_STM32F10X_API_CREATE_STATIC_DEV(spiFlsh_gpio_dev,"ioFlsh" ,GPIO_STM32F10X_API_PORT_A,
-//		4 ,GPIO_STM32F10X_API_MODE_OUT_PP);
-//
-//
-//SPI_FLASH_API_CREATE_STATIC_DEV(spi_flash_dev_inst,"spiFlsh"  ,spi_dev , spiFlsh_gpio_dev );
-//
-//
-//SPI_FLASH_PARTITION_MANAGER_API_CREATE_STATIC_DEV(spi_flash_partition_manager_dev,"pmFlsh"  ,spi_flash_dev_inst );
-//
-//INIT_STATIC_DEVICES(
-//		&spi_flash_dev_inst,
-//		&spi_flash_partition_manager_dev
-//		);
-//
-//pdev_descriptor_const semihosting_dev = &sh_dev;
-//pdev_descriptor_const semihosting_dev_wrap = &sh_wrap_dev;
 
-
-pdev_descriptor_const uart0_dev = &uart_dev_inst;
-pdev_descriptor_const uart0_dev_wrap = &uart_wrap_dev_inst;
-pdev_descriptor_const shell_dev = &shell_dev_inst;
-pdev_descriptor_const i2s_dev = &i2s_dev_inst;
-pdev_descriptor_const heartbeat_dev = &heartbeat_dev_inst;
-pdev_descriptor_const systick_dev = &systick_dev_inst;
-pdev_descriptor_const app_dev = &app_dev_inst;
-pdev_descriptor_const heartbeat_gpio_dev = &heartbeat_gpio_dev_inst;
-
-INIT_STATIC_DEVICES(&uart_wrap_dev_inst);
 
 /**** end ofsetup of static devices and device managment ****/
 /************************************************************/
 
 
-
-
-/* function : NVIC_APP_Init
- *
- *
- *
- */
-void	NVIC_APP_Init(void)
+inline void init_i2s()
 {
-	NVIC_API_Init();
-	NVIC_API_RegisterInt(SVCall_IRQn , vPortSVCHandler);
-//	NVIC_API_RegisterInt(NVIC_API_Int_SVCall , do_software_interrupt_asm);
-	NVIC_API_RegisterInt(PendSV_IRQn , xPortPendSVHandler);
-//	NVIC_API_RegisterInt(SysTick_IRQn , xPortSysTickHandler);
+    I2S_API_set_params_t I2S_API_set_params;
+
+	I2S_API_set_params.num_of_words_in_buffer_per_chenel = I2S_BUFF_LEN;
+	I2S_API_set_params.num_of_bytes_in_word = NUM_OF_BYTES_PER_AUDIO_WORD;
+	DEV_IOCTL_1_PARAMS(i2s_dev , I2S_SET_PARAMS, &I2S_API_set_params);
+	DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
 
 }
 
-
+void app_routines_init(void)
+{
+	os_set_tick_timer_dev(systick_dev);
+	os_set_tick_callback(app_tick_callback);
+	os_set_idle_entrance_callback(app_idle_hook);
+}
 
 /* function : prvSetupHardware
  *
  *
  *
  */
-void prvSetupHardware( void )
+void init( void )
 {
-	//pdev_descriptor dev;
-    uint32_t baud;
-    I2S_API_set_params_t I2S_API_set_params;
-	NVIC_APP_Init();
+	clocks_api_set_rate(CLOCK_CORE , CORE_CLOCK_RATE);
 
 
-	clocks_control_nuc505_init();
-
-	DEV_API_add_device((uint8_t*)"version",version_managment_api_init_dev_descriptor);
-
-
-//	dev=DEV_API_add_device((uint8_t*)"serial",serial_number_stm32f10x_api_init_dev_descriptor);
-//	DEV_IOCTL_0_PARAMS(dev , IOCTL_DEVICE_START   );
-//
-//	DEV_IOCTL(dev , IOCTL_SERIAL_NUM_GET , &pSerNum);
-
-
-	NVIC_API_EnableAllInt();
 	DEV_IOCTL_0_PARAMS(heartbeat_dev , IOCTL_DEVICE_START );
-	NVIC_API_DisableAllInt();
-
-	baud = 115200;
-	DEV_IOCTL_1_PARAMS(uart0_dev , IOCTL_UART_SET_BAUD_RATE , &baud);
 
 	DEV_IOCTL_0_PARAMS(uart0_dev , IOCTL_DEVICE_START );
 
-	DEV_IOCTL_0_PARAMS(uart0_dev_wrap , IOCTL_DEVICE_START );
+	DEV_IOCTL_0_PARAMS(uart0_wrap_dev , IOCTL_DEVICE_START );
 
 	DEV_IOCTL_0_PARAMS(shell_dev , IOCTL_DEVICE_START );
+
+	DEV_IOCTL_0_PARAMS(u_boot_shell_dev , IOCTL_DEVICE_START  );
 
 	DEV_IOCTL_0_PARAMS(heartbeat_gpio_dev , IOCTL_DEVICE_START );
 
 	DEV_IOCTL_0_PARAMS(app_dev , IOCTL_DEVICE_START );
 
-	I2S_API_set_params.num_of_words_in_buffer_per_chenel = I2S_BUFF_LEN;
-	I2S_API_set_params.num_of_bytes_in_word = NUM_OF_BYTES_PER_AUDIO_WORD;
 
-	DEV_IOCTL_1_PARAMS(i2s_dev , I2S_SET_PARAMS, &I2S_API_set_params);
-	DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
+	init_i2s();
 
+	app_routines_init();
 
-	PRINTF_API_AddDebugOutput(uart0_dev_wrap);
+	PRINTF_API_AddDebugOutput(uart0_wrap_dev);
+
 
 }
 

@@ -109,8 +109,7 @@ void *dsp_buffers_pool;
 
 float cutoff_freq = 100;
 
-TIMER_API_CREATE_STATIC_DEV(app_timer_inst,"apptim" ,systick_dev_inst );
-static pdev_descriptor_const  timer_device = &app_timer_inst;
+TIMER_API_CREATE_STATIC_DEV(app_timer_dev ,systick_dev );
 
 uint8_t loopback = 0 ;
 
@@ -223,9 +222,9 @@ static void main_thread_func (void * param)
 			DEV_IOCTL(&compressor_limiter, IOCTL_COMPRESSOR_GET_HIT_COUNTER ,&limiter_hits);
 			PRINTF_DBG("limiter = %d  \n", limiter_hits );
 
-			DEV_IOCTL(timer_device,TIMER_API_SET_COUNTDOWN_VALUE_AND_REST,&cpu_usage_print_timeout);
+			DEV_IOCTL(app_timer_dev,TIMER_API_SET_COUNTDOWN_VALUE_AND_REST,&cpu_usage_print_timeout);
 		}
-		DEV_IOCTL(timer_device, TIMER_API_CHECK_IF_COUNTDOWN_ELAPSED ,  &is_timer_elapsed );
+		DEV_IOCTL(app_timer_dev, TIMER_API_CHECK_IF_COUNTDOWN_ELAPSED ,  &is_timer_elapsed );
 
 
 

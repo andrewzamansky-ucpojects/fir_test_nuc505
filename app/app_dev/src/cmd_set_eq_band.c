@@ -8,7 +8,7 @@
 
 #include <stdlib.h>
 
-#include <command.h>
+#include "u-boot/include/command.h"
 #include "shell_api.h"
 #include "dev_managment_api.h"
 #include "dsp_managment_api.h"

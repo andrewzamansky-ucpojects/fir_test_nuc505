@@ -8,7 +8,7 @@
 
 #include <stdlib.h>
 
-#include <command.h>
+#include "u-boot/include/command.h"
 #include "shell_api.h"
 
 #include "equalizer_api.h"

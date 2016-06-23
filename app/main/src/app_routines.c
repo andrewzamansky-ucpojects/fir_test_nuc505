@@ -14,10 +14,8 @@
 
 #include "app_dev_api.h"
 
-#include "NUC505Series.h"
 #include "gpio.h"
 #include "heartbeat_api.h"
-#include "hw_timer_api.h"
 
 #define DEBUG
 #include "PRINTF_api.h"
@@ -27,13 +25,7 @@
 
 /*-----------------------------------------------------------*/
 
-extern void xPortSysTickHandler(void);
-
-
-void heartbeat_callback(void);
-
 extern pdev_descriptor_const heartbeat_dev ;
-extern pdev_descriptor_const systick_dev  ;
 extern pdev_descriptor_const heartbeat_gpio_dev ;
 
 
@@ -46,24 +38,15 @@ void busy_delay(uint32_t mSec)
 
 }
 
-void system_tick_callback(void)
+void app_tick_callback(void)
 {
 	DEV_IOCTL_0_PARAMS(heartbeat_dev , HEARTBEAT_API_EACH_1mS_CALL );
-	xPortSysTickHandler();
 }
 
 
-/* implement  vPortSetupTimerInterrupt() function
- * to disable weak copy of this function in port.c if local systick
- * code are used to start systick
- */
-void vPortSetupTimerInterrupt( void )
-{
-	DEV_IOCTL_1_PARAMS(systick_dev , IOCTL_TIMER_CALLBACK_SET , (void*) system_tick_callback);
-	DEV_IOCTL_0_PARAMS(systick_dev , IOCTL_DEVICE_START );
-}
 
-void vApplicationIdleHook()
+
+void app_idle_hook()
 {
 	DEV_IOCTL_0_PARAMS(heartbeat_dev , HEARTBEAT_API_CALL_FROM_IDLE_TASK );
 }

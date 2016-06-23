@@ -41,7 +41,7 @@
  */
 #include "_project.h"
 
-#include <command.h>
+#include "u-boot/include/command.h"
 #include "shell_api.h"
 
 extern uint8_t i2s_loopback ;
