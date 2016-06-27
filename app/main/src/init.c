@@ -49,7 +49,7 @@ UART_NUC505_API_CREATE_STATIC_DEV(uart0_dev , UART_NUC505_API_UART_ID_0 , uart0_
 
 SW_UART_WRAPPER_API_CREATE_STATIC_DEV(uart0_wrap_dev , uart0_dev ,shell_dev , rx_buff,RX_BUFF_SIZE);
 
-SHELL_API_CREATE_STATIC_DEV(shell_dev , uart0_wrap_dev);
+SHELL_API_CREATE_STATIC_DEV(shell_dev , uart0_wrap_dev , u_boot_shell_dev);
 
 U_BOOT_SHELL_API_CREATE_STATIC_DEV(u_boot_shell_dev , shell_dev );
 
@@ -91,7 +91,7 @@ void app_routines_init(void)
  */
 void init( void )
 {
-	clocks_api_set_rate(CLOCK_CORE , CORE_CLOCK_RATE);
+	clocks_api_set_rate(CONFIG_DT_CORE_CLOCK  , CORE_CLOCK_RATE);
 
 
 	DEV_IOCTL_0_PARAMS(heartbeat_dev , IOCTL_DEVICE_START );
