@@ -76,7 +76,7 @@ typedef struct
 os_queue_t xQueue=NULL ;
 
 
-dsp_descriptor_t app_I2S_spliter;
+dsp_descriptor_t app_I2S_spliter = {0};
 dsp_descriptor_t app_I2S_mixer;
 
 dsp_descriptor_t lpf_filter;

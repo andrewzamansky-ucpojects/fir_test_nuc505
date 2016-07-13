@@ -2,7 +2,6 @@
 
 INCLUDE_THIS_COMPONENT := y
 
-
 #DEFINES +=
 
 #CFLAGS +=

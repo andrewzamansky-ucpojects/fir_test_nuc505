@@ -40,8 +40,20 @@ void heartbeat_callback(void);
 void app_tick_callback(void);
 void app_idle_hook(void);
 
-CORTEXM_SYSTICK_API_CREATE_STATIC_DEV(systick_dev ,
-		OS_TICK_IN_MICRO_SEC , TIMER_API_PERIODIC_MODE , NULL );
+
+#define CURRENT_DEV()		cortexM_systick
+#include INIT_CURRENT_DEV()
+
+#define CORTEXM_SYSTICK_DT_DEV_NAME			systick_dev
+#define CORTEXM_SYSTICK_DT_INITIAL_RATE		OS_TICK_IN_MICRO_SEC
+#define CORTEXM_SYSTICK_DT_MODE				TIMER_API_PERIODIC_MODE
+#define CORTEXM_SYSTICK_DT_CALLBACK			NULL
+
+#include ADD_CURRENT_DEV()
+
+
+//CORTEXM_SYSTICK_API_CREATE_STATIC_DEV(systick_dev ,
+//		OS_TICK_IN_MICRO_SEC , TIMER_API_PERIODIC_MODE , NULL );
 
 HEARTBEAT_API_CREATE_STATIC_DEV(heartbeat_dev ,heartbeat_callback , systick_dev);
 
@@ -65,17 +77,17 @@ GPIO_NUC505_API_CREATE_STATIC_DEV(heartbeat_gpio_dev , GPIO_NUC505_API_PORT_C ,
 /**** end ofsetup of static devices and device managment ****/
 /************************************************************/
 
-
-inline void init_i2s()
-{
-    I2S_API_set_params_t I2S_API_set_params;
-
-	I2S_API_set_params.num_of_words_in_buffer_per_chenel = I2S_BUFF_LEN;
-	I2S_API_set_params.num_of_bytes_in_word = NUM_OF_BYTES_PER_AUDIO_WORD;
-	DEV_IOCTL_1_PARAMS(i2s_dev , I2S_SET_PARAMS, &I2S_API_set_params);
-	DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
-
-}
+//
+//inline void init_i2s()
+//{
+//    I2S_API_set_params_t I2S_API_set_params;
+//
+//	I2S_API_set_params.num_of_words_in_buffer_per_chenel = I2S_BUFF_LEN;
+//	I2S_API_set_params.num_of_bytes_in_word = NUM_OF_BYTES_PER_AUDIO_WORD;
+//	DEV_IOCTL_1_PARAMS(i2s_dev , I2S_SET_PARAMS, &I2S_API_set_params);
+//	DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
+//
+//}
 
 void app_routines_init(void)
 {
@@ -94,22 +106,22 @@ void init( void )
 	clocks_api_set_rate(CONFIG_DT_CORE_CLOCK  , CORE_CLOCK_RATE);
 
 
-	DEV_IOCTL_0_PARAMS(heartbeat_dev , IOCTL_DEVICE_START );
+//	DEV_IOCTL_0_PARAMS(heartbeat_dev , IOCTL_DEVICE_START );
+//
+//	DEV_IOCTL_0_PARAMS(uart0_dev , IOCTL_DEVICE_START );
+//
+//	DEV_IOCTL_0_PARAMS(uart0_wrap_dev , IOCTL_DEVICE_START );
+//
+//	DEV_IOCTL_0_PARAMS(shell_dev , IOCTL_DEVICE_START );
+//
+//	DEV_IOCTL_0_PARAMS(u_boot_shell_dev , IOCTL_DEVICE_START  );
+//
+//	DEV_IOCTL_0_PARAMS(heartbeat_gpio_dev , IOCTL_DEVICE_START );
+//
+//	DEV_IOCTL_0_PARAMS(app_dev , IOCTL_DEVICE_START );
 
-	DEV_IOCTL_0_PARAMS(uart0_dev , IOCTL_DEVICE_START );
 
-	DEV_IOCTL_0_PARAMS(uart0_wrap_dev , IOCTL_DEVICE_START );
-
-	DEV_IOCTL_0_PARAMS(shell_dev , IOCTL_DEVICE_START );
-
-	DEV_IOCTL_0_PARAMS(u_boot_shell_dev , IOCTL_DEVICE_START  );
-
-	DEV_IOCTL_0_PARAMS(heartbeat_gpio_dev , IOCTL_DEVICE_START );
-
-	DEV_IOCTL_0_PARAMS(app_dev , IOCTL_DEVICE_START );
-
-
-	init_i2s();
+//	init_i2s();
 
 	app_routines_init();
 
