@@ -3,7 +3,7 @@
 #define _app_dev_API_H_
 
 #include "_project.h"
-#include "dev_managment_api.h" // for device manager defines and typedefs
+#include "dev_management_api.h" // for device manager defines and typedefs
 
 /*****************  defines  **************/
 
@@ -19,9 +19,5 @@ typedef enum
 	IOCTL_APP_DEV_SET_SERIAL_NUMBER = IOCTL_LAST_COMMON_IOCTL+1
 }APP_DEV_API_ioctl_t;
 
-#include "src/app_dev_static_dev_macros.h"
-
-#define APP_API_CREATE_STATIC_DEV(pdev   ) \
-			__APP_API_CREATE_STATIC_DEV(pdev   )
 
 #endif

@@ -11,7 +11,7 @@
 #include "u-boot/include/command.h"
 #include "shell_api.h"
 
-#include "dsp_managment_api.h"
+#include "dsp_management_api.h"
 #include "compressor_api.h"
 #include "os_wrapper.h"
 

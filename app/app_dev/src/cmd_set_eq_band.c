@@ -10,8 +10,8 @@
 
 #include "u-boot/include/command.h"
 #include "shell_api.h"
-#include "dev_managment_api.h"
-#include "dsp_managment_api.h"
+#include "dev_management_api.h"
+#include "dsp_management_api.h"
 
 #include "equalizer_api.h"
 #include "common_dsp_api.h"

@@ -12,7 +12,7 @@
 
 /********  includes *********************/
 #include "_project.h"
-#include "dev_managment_api.h" // for device manager defines and typedefs
+#include "dev_management_api.h" // for device manager defines and typedefs
 
 #include "app_dev_api.h"
 
@@ -23,7 +23,7 @@
 
 #include "os_wrapper.h"
 
-#include "dsp_managment_api.h"
+#include "dsp_management_api.h"
 #include "equalizer_api.h"
 #include "mixer_api.h"
 #include "compressor_api.h"
@@ -109,7 +109,16 @@ void *dsp_buffers_pool;
 
 float cutoff_freq = 100;
 
-TIMER_API_CREATE_STATIC_DEV(app_timer_dev ,systick_dev );
+/***********************************/
+/********** app_timer_dev ********/
+#define CURRENT_DEV		timer
+#include INIT_CURRENT_DEV()
+
+#define TIMER_DT_DEV_NAME			app_timer_dev
+#define TIMER_DT_HW_TIMER_PDEV		systick_dev
+
+#include ADD_CURRENT_DEV()
+
 
 uint8_t loopback = 0 ;
 
@@ -408,7 +417,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			/* Create an application thread */
 
 			dsp_buffers_pool = memory_pool_init(5 , I2S_BUFF_LEN * sizeof(float));
-			dsp_managment_api_set_buffers_pool(dsp_buffers_pool);
+			dsp_management_api_set_buffers_pool(dsp_buffers_pool);
 
 			/**************  I2S splitter and mixer  *************/
 			retVal = I2S_splitter_api_init_dsp_descriptor(&app_I2S_spliter);
@@ -478,17 +487,17 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			retVal = virtual_bass_api_init_dsp_descriptor(&vb);
 			if(retVal) while(1);
 			DSP_IOCTL_0_PARAMS(&vb , IOCTL_DEVICE_START );
-			dsp_managment_api_set_module_control(&vb , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+			dsp_management_api_set_module_control(&vb , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
 			retVal = equalizer_api_init_dsp_descriptor(&vb_final_filter);
 			if(retVal) while(1);
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)3) );
 			DSP_IOCTL_0_PARAMS(&vb_final_filter , IOCTL_DEVICE_START );
-			dsp_managment_api_set_module_control(&vb_final_filter , DSP_MANAGMENT_API_MODULE_CONTROL_MUTE);
-			dsp_managment_api_set_module_control(&lpf_filter , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+			dsp_management_api_set_module_control(&vb_final_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_MUTE);
+			dsp_management_api_set_module_control(&lpf_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
-			dsp_managment_api_set_module_control(&hpf_filter_left , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
-			dsp_managment_api_set_module_control(&hpf_filter_right , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);			app_dev_set_cuttof();
+			dsp_management_api_set_module_control(&hpf_filter_left , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
+			dsp_management_api_set_module_control(&hpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);			app_dev_set_cuttof();
 
 			/**************   eq filters  *************/
 			retVal = equalizer_api_init_dsp_descriptor(&leftChanelEQ);
@@ -522,7 +531,7 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 			}
 #endif
 			DSP_IOCTL_0_PARAMS(&compressor_limiter , IOCTL_DEVICE_START );
-			dsp_managment_api_set_module_control(&compressor_limiter , DSP_MANAGMENT_API_MODULE_CONTROL_BYPASS);
+			dsp_management_api_set_module_control(&compressor_limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
 			retVal = voice_3D_api_init_dsp_descriptor(&voice_3d);
 			if(retVal) while(1);

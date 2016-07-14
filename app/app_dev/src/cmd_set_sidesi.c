@@ -12,7 +12,7 @@
 #include "shell_api.h"
 
 
-#include "dsp_managment_api.h"
+#include "dsp_management_api.h"
 #include "voice_3D_api.h"
 #include "os_wrapper.h"
 

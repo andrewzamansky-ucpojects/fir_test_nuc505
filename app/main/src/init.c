@@ -5,26 +5,12 @@
 #include "_project_defines.h"
 #include "_project_func_declarations.h"
 
-//#include "assert.h"
-
-#include "dev_managment_api.h"
 #include "clocks_api.h"
-
-
 #include "included_modules.h"
-
-
 
 #define DEBUG
 #include "PRINTF_api.h"
-
-#include "app_dev_api.h"
-
 #include "gpio.h"
-
-#include "cortexM_systick_api.h"
-#include "heartbeat_api.h"
-#include "u_boot_shell_api.h"
 
 
 /*-----------------------------------------------------------*/
@@ -40,8 +26,9 @@ void heartbeat_callback(void);
 void app_tick_callback(void);
 void app_idle_hook(void);
 
-
-#define CURRENT_DEV()		cortexM_systick
+/***********************************/
+/********** systick_dev ********/
+#define CURRENT_DEV		cortexM_systick
 #include INIT_CURRENT_DEV()
 
 #define CORTEXM_SYSTICK_DT_DEV_NAME			systick_dev
@@ -52,42 +39,110 @@ void app_idle_hook(void);
 #include ADD_CURRENT_DEV()
 
 
-//CORTEXM_SYSTICK_API_CREATE_STATIC_DEV(systick_dev ,
-//		OS_TICK_IN_MICRO_SEC , TIMER_API_PERIODIC_MODE , NULL );
 
-HEARTBEAT_API_CREATE_STATIC_DEV(heartbeat_dev ,heartbeat_callback , systick_dev);
+/***********************************/
+/********** heartbeat_dev ********/
+#define CURRENT_DEV		heartbeat
+#include INIT_CURRENT_DEV()
 
-UART_NUC505_API_CREATE_STATIC_DEV(uart0_dev , UART_NUC505_API_UART_ID_0 , uart0_wrap_dev , 115200);
+#define HEARTBEAT_DT_DEV_NAME			heartbeat_dev
+#define HEARTBEAT_DT_CALLBACK_FUNC		heartbeat_callback
+#define HEARTBEAT_DT_OS_TIMER_PDEV		systick_dev
 
-SW_UART_WRAPPER_API_CREATE_STATIC_DEV(uart0_wrap_dev , uart0_dev ,shell_dev , rx_buff,RX_BUFF_SIZE);
+#include ADD_CURRENT_DEV()
 
-SHELL_API_CREATE_STATIC_DEV(shell_dev , uart0_wrap_dev , u_boot_shell_dev);
+//extern dev_descriptor_t inst_uart0_wrap_dev;
 
-U_BOOT_SHELL_API_CREATE_STATIC_DEV(u_boot_shell_dev , shell_dev );
+/***********************************/
+/********** uart0_dev ********/
+#define CURRENT_DEV		uart_nuc505
+#include INIT_CURRENT_DEV()
 
-APP_API_CREATE_STATIC_DEV(app_dev);
+#define UART_NUC505_DT_DEV_NAME			uart0_dev
+#define UART_NUC505_DT_UART_NUMBER		UART_NUC505_API_UART_ID_0
+#define UART_NUC505_DT_CALLBACK_PDEV	uart0_wrap_dev
+#define UART_NUC505_DT_BAUD_RATE		115200
 
-I2S_NUC505_API_CREATE_STATIC_DEV(i2s_dev , app_dev);
-
-GPIO_NUC505_API_CREATE_STATIC_DEV(heartbeat_gpio_dev , GPIO_NUC505_API_PORT_C ,
-		0x00000008 ,GPIO_NUC505_API_MODE_OUT_PP);
+#include ADD_CURRENT_DEV()
 
 
+/***********************************/
+/********** uart0_wrap_dev ********/
+#define CURRENT_DEV		sw_uart_wrapper
+#include INIT_CURRENT_DEV()
 
-/**** end ofsetup of static devices and device managment ****/
+#define SW_UART_WRAPPER_DT_DEV_NAME			uart0_wrap_dev
+#define SW_UART_WRAPPER_DT_SERVER_PDEV		uart0_dev
+#define SW_UART_WRAPPER_DT_CLIENT_PDEV		shell_dev
+#define SW_UART_WRAPPER_DT_RX_BUFFER		rx_buff
+#define SW_UART_WRAPPER_DT_RX_BUFFER_SIZE	RX_BUFF_SIZE
+
+#include ADD_CURRENT_DEV()
+
+
+/***********************************/
+/********** shell_dev ********/
+#define CURRENT_DEV		shell
+#include INIT_CURRENT_DEV()
+
+#define SHELL_DT_DEV_NAME		shell_dev
+#define SHELL_DT_SERVER_PDEV	uart0_wrap_dev
+#define SHELL_DT_CALLBACK_PDEV	u_boot_shell_dev
+
+#include ADD_CURRENT_DEV()
+
+
+/***********************************/
+/********** u_boot_shell_dev ********/
+#define CURRENT_DEV		u_boot_shell
+#include INIT_CURRENT_DEV()
+
+#define U_BOOT_SHELL_DT_DEV_NAME		u_boot_shell_dev
+#define U_BOOT_SHELL_DT_SERVER_PDEV		shell_dev
+
+#include ADD_CURRENT_DEV()
+
+
+/***********************************/
+/********** app_dev ********/
+#define CURRENT_DEV		app_dev
+#include INIT_CURRENT_DEV()
+
+#define APP_DEV_DT_DEV_NAME		app_dev
+
+#include ADD_CURRENT_DEV()
+
+
+/***********************************/
+/********** i2s_dev ********/
+#define CURRENT_DEV		I2S_nuc505
+#include INIT_CURRENT_DEV()
+
+#define I2S_NUC505_DT_DEV_NAME					i2s_dev
+#define I2S_NUC505_DT_NUM_OF_WORDS_IN_BUFFER	I2S_BUFF_LEN
+#define I2S_NUC505_DT_NUM_OF_BYTES_IN_WORD		NUM_OF_BYTES_PER_AUDIO_WORD
+#define I2S_NUC505_DT_CALLBACK_PDEV				app_dev
+
+#include ADD_CURRENT_DEV()
+
+/***********************************/
+/********** heartbeat_gpio_dev ********/
+#define CURRENT_DEV		gpio_nuc505
+#include INIT_CURRENT_DEV()
+
+#define GPIO_NUC505_DT_DEV_NAME		heartbeat_gpio_dev
+#define GPIO_NUC505_DT_PORT			GPIO_NUC505_API_PORT_C
+#define GPIO_NUC505_DT_PIN			0x00000008
+#define GPIO_NUC505_DT_MODE			GPIO_NUC505_API_MODE_OUT_PP
+
+#include ADD_CURRENT_DEV()
+
+
+
+/**** end ofsetup of static devices and device management ****/
 /************************************************************/
 
-//
-//inline void init_i2s()
-//{
-//    I2S_API_set_params_t I2S_API_set_params;
-//
-//	I2S_API_set_params.num_of_words_in_buffer_per_chenel = I2S_BUFF_LEN;
-//	I2S_API_set_params.num_of_bytes_in_word = NUM_OF_BYTES_PER_AUDIO_WORD;
-//	DEV_IOCTL_1_PARAMS(i2s_dev , I2S_SET_PARAMS, &I2S_API_set_params);
-//	DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
-//
-//}
+
 
 void app_routines_init(void)
 {
@@ -106,22 +161,22 @@ void init( void )
 	clocks_api_set_rate(CONFIG_DT_CORE_CLOCK  , CORE_CLOCK_RATE);
 
 
-//	DEV_IOCTL_0_PARAMS(heartbeat_dev , IOCTL_DEVICE_START );
-//
-//	DEV_IOCTL_0_PARAMS(uart0_dev , IOCTL_DEVICE_START );
-//
-//	DEV_IOCTL_0_PARAMS(uart0_wrap_dev , IOCTL_DEVICE_START );
-//
-//	DEV_IOCTL_0_PARAMS(shell_dev , IOCTL_DEVICE_START );
-//
-//	DEV_IOCTL_0_PARAMS(u_boot_shell_dev , IOCTL_DEVICE_START  );
-//
-//	DEV_IOCTL_0_PARAMS(heartbeat_gpio_dev , IOCTL_DEVICE_START );
-//
-//	DEV_IOCTL_0_PARAMS(app_dev , IOCTL_DEVICE_START );
+	DEV_IOCTL_0_PARAMS(heartbeat_dev , IOCTL_DEVICE_START );
+
+	DEV_IOCTL_0_PARAMS(uart0_dev , IOCTL_DEVICE_START );
+
+	DEV_IOCTL_0_PARAMS(uart0_wrap_dev , IOCTL_DEVICE_START );
+
+	DEV_IOCTL_0_PARAMS(shell_dev , IOCTL_DEVICE_START );
+
+	DEV_IOCTL_0_PARAMS(u_boot_shell_dev , IOCTL_DEVICE_START  );
+
+	DEV_IOCTL_0_PARAMS(heartbeat_gpio_dev , IOCTL_DEVICE_START );
+
+	DEV_IOCTL_0_PARAMS(app_dev , IOCTL_DEVICE_START );
 
 
-//	init_i2s();
+	DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
 
 	app_routines_init();
 

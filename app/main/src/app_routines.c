@@ -7,7 +7,7 @@
 
 //#include "assert.h"
 
-#include "dev_managment_api.h"
+#include "dev_management_api.h"
 
 #include "included_modules.h"
 
