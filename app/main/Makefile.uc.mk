@@ -11,6 +11,7 @@ INCLUDE_THIS_COMPONENT := y
 
 
 SRC = main.c
+SRC += device_tree.c
 SRC += init.c
 SRC += app_routines.c
 

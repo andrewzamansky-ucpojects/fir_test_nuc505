@@ -548,6 +548,8 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 
 			os_create_task("main" , main_thread_func, 0, MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
 
+			DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
+
 			break;
 		default :
 			return 1;
