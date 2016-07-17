@@ -17,7 +17,7 @@ extern void init( void );
 /*-----------------------------------------------------------*/
 int main( void )
 {
-	os_init()
+	os_init();
 
 	init();
 

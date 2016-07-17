@@ -38,18 +38,6 @@ void busy_delay(uint32_t mSec)
 
 }
 
-void app_tick_callback(void)
-{
-	DEV_IOCTL_0_PARAMS(heartbeat_dev , HEARTBEAT_API_EACH_1mS_CALL );
-}
-
-
-
-
-void app_idle_hook()
-{
-	DEV_IOCTL_0_PARAMS(heartbeat_dev , HEARTBEAT_API_CALL_FROM_IDLE_TASK );
-}
 
 void heartbeat_callback(void)
 {
