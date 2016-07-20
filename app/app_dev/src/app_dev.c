@@ -111,13 +111,12 @@ float cutoff_freq = 100;
 
 /***********************************/
 /********** app_timer_dev ********/
-#define CURRENT_DEV		timer
-#include INIT_CURRENT_DEV()
+#define DT_DEV_NAME							app_timer_dev
+#define DT_DEV_DRIVER						timer
 
-#define TIMER_DT_DEV_NAME			app_timer_dev
 #define TIMER_DT_HW_TIMER_PDEV		systick_dev
 
-#include ADD_CURRENT_DEV()
+#include ADD_CURRENT_DEV
 
 
 uint8_t loopback = 0 ;
