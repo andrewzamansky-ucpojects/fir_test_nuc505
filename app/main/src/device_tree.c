@@ -12,8 +12,6 @@ uint8_t rx_buff[RX_BUFF_SIZE];
 /**** end of variables initialization  ********/
 /**********************************************/
 
-extern void heartbeat_callback(void);
-
 
 
 /***********************************/
@@ -27,13 +25,19 @@ extern void heartbeat_callback(void);
 #include ADD_CURRENT_DEV
 
 
+/***********************************/
+/********** heartbeat_callback_dev ********/
+#define DT_DEV_NAME							heartbeat_callback_dev
+#define DT_DEV_DRIVER						heartbeat_callback
+
+#include ADD_CURRENT_DEV
 
 /***********************************/
 /********** heartbeat_dev ********/
 #define DT_DEV_NAME							heartbeat_dev
 #define DT_DEV_DRIVER						heartbeat
 
-#define HEARTBEAT_DT_CALLBACK_FUNC			heartbeat_callback
+#define HEARTBEAT_DT_CALLBACK_PDEV			heartbeat_callback_dev
 #define HEARTBEAT_DT_OS_TIMER_PDEV			systick_dev
 
 #include ADD_CURRENT_DEV

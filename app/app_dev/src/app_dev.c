@@ -32,8 +32,6 @@
 #include "I2S_nuc505_api.h"
 #include "I2S_splitter_api.h"
 #include "I2S_mixer_api.h"
-#include "timer_api.h"
-#include "heartbeat_api.h"
 #include "math.h"
 #include "memory_pool_api.h"
 
@@ -171,10 +169,8 @@ static void main_thread_func (void * param)
 	uint16_t i;//,j;
 	buffer_type_t *pRxBuf;
 	buffer_type_t *pTxBuf;
-	uint8_t is_timer_elapsed=1;
-	uint32_t retVal;
+
 	xQueue = os_create_queue( APP_DEV_CONFIG_MAX_QUEUE_LEN , sizeof(xMessage_t ) );
-	uint64_t cpu_usage_print_timeout = 2000;
 
 	control_mutex = os_create_mutex();
 
@@ -182,8 +178,7 @@ static void main_thread_func (void * param)
 
     while (1)
     {
-		retVal = os_queue_receive_with_timeout( xQueue , &( xRxMessage ) , 1000 );
-		if( OS_QUEUE_RECEIVE_SUCCESS ==  retVal)
+		if( OS_QUEUE_RECEIVE_SUCCESS ==  os_queue_receive_infinite_wait( xQueue , &( xRxMessage )  ))
 		{
 
 			pRxBuf =  (buffer_type_t*)xRxMessage.rxBuffer;
@@ -217,24 +212,6 @@ static void main_thread_func (void * param)
 
 
 		}
-
-		if (is_timer_elapsed)
-		{
-			uint8_t cpu_usage_int_part,cpu_usage_res_part;
-			uint32_t cpu_usage;
-			uint32_t limiter_hits;
-			DEV_IOCTL_1_PARAMS(heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
-			cpu_usage_int_part = cpu_usage / 1000;
-			cpu_usage_res_part = cpu_usage - cpu_usage_int_part;
-			PRINTF_DBG("cpu usage = %d.%03d%% \n", cpu_usage_int_part , cpu_usage_res_part);
-			DEV_IOCTL(&compressor_limiter, IOCTL_COMPRESSOR_GET_HIT_COUNTER ,&limiter_hits);
-			PRINTF_DBG("limiter = %d  \n", limiter_hits );
-
-			DEV_IOCTL(app_timer_dev,TIMER_API_SET_COUNTDOWN_VALUE_AND_REST,&cpu_usage_print_timeout);
-		}
-		DEV_IOCTL(app_timer_dev, TIMER_API_CHECK_IF_COUNTDOWN_ELAPSED ,  &is_timer_elapsed );
-
-
 
 		os_stack_test();
 
