@@ -49,6 +49,8 @@
 
 #define APP_DEV_CONFIG_MAX_QUEUE_LEN					( 2 )
 
+#define INSTANCE(hndl)	((app_instance_t*)hndl)
+
 /********  types  *********************/
 
 /********  externals *********************/
@@ -71,7 +73,7 @@ typedef struct
 } xMessage_t;
 
 
-os_queue_t xQueue=NULL ;
+static os_queue_t xQueue=NULL ;
 
 
 dsp_descriptor_t app_I2S_spliter = {0};
@@ -98,31 +100,14 @@ dsp_descriptor_t adder_bass_with_left_channel;
 dsp_descriptor_t adder_bass_with_right_channel;
 
 dsp_descriptor_t source;
-dsp_descriptor_t sink;
+//static dsp_descriptor_t sink;
 
-extern pdev_descriptor_const i2s_dev;
-extern pdev_descriptor_const heartbeat_dev ;
 
 void *dsp_buffers_pool;
-
 float cutoff_freq = 100;
-
-/***********************************/
-/********** app_timer_dev ********/
-#define DT_DEV_NAME							app_timer_dev
-#define DT_DEV_DRIVER						timer
-
-#define TIMER_DT_HW_TIMER_PDEV		systick_dev
-
-#include ADD_CURRENT_DEV
-
-
 uint8_t loopback = 0 ;
-
-
 os_mutex_t  control_mutex;
-
-dsp_chain_t *pMain_dsp_chain;
+static dsp_chain_t *pMain_dsp_chain;
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        app_dev_callback                                                                          */
@@ -163,7 +148,7 @@ uint8_t app_dev_callback(void * const aHandle ,
  *
  * @return None
  */
-static void main_thread_func (void * param)
+static void main_thread_func (void * aHandle)
 {
 	xMessage_t xRxMessage;
 	uint16_t i;//,j;
@@ -174,7 +159,7 @@ static void main_thread_func (void * param)
 
 	control_mutex = os_create_mutex();
 
-	DEV_IOCTL_0_PARAMS(i2s_dev , I2S_ENABLE_OUTPUT_IOCTL );
+	DEV_IOCTL_0_PARAMS(INSTANCE(aHandle)->i2s_dev , I2S_ENABLE_OUTPUT_IOCTL );
 
     while (1)
     {
@@ -229,7 +214,7 @@ static void main_thread_func (void * param)
 /* Description:                                                                                            */
 /*                                                            						 */
 /*---------------------------------------------------------------------------------------------------------*/
-uint8_t app_dev_create_signal_flow()
+static uint8_t app_dev_create_signal_flow()
 {
 	pMain_dsp_chain = DSP_CREATE_CHAIN(16);
 	//******* distribute L-R **********/
@@ -522,9 +507,9 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 
 			app_dev_create_signal_flow();
 
-			os_create_task("main" , main_thread_func, 0, MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
+			os_create_task("main" , main_thread_func, aHandle , MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
 
-			DEV_IOCTL_0_PARAMS(i2s_dev , IOCTL_DEVICE_START );
+			DEV_IOCTL_0_PARAMS(INSTANCE(aHandle)->i2s_dev , IOCTL_DEVICE_START );
 
 			break;
 		default :

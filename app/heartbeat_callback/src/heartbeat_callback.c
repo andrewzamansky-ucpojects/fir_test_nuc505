@@ -1,6 +1,6 @@
 /*
  *
- * file :   heartbeat.c
+ * file :   heartbeat_callback.c
  *
  *
  *
@@ -27,6 +27,7 @@
 
 /********  defines *********************/
 
+#define INSTANCE(hndl)	((heartbeat_callback_instance_t*)hndl)
 
 #define HEARTBEAT_CONFIG_MAX_QUEUE_LEN					( 1 )
 
@@ -51,11 +52,6 @@ typedef struct
 
 
 static os_queue_t xQueue=NULL ;
-
-
-extern pdev_descriptor_const heartbeat_dev ;
-extern pdev_descriptor_const heartbeat_gpio_dev ;
-
 
 
 /*---------------------------------------------------------------------------------------------------------*/
@@ -94,9 +90,12 @@ uint8_t heartbeat_callback_callback(void * const aHandle ,
  *
  * @return None
  */
-static void heartbeat_thread_func (void * param)
+static void heartbeat_thread_func (void * aHandle)
 {
 	xMessage_t xRxMessage;
+	pdev_descriptor_const l_heartbeat_blinking_gpio_dev = INSTANCE(aHandle)->heartbeat_blinking_gpio_dev;
+	pdev_descriptor_const l_heartbeat_dev = INSTANCE(aHandle)->heartbeat_dev ;
+
 	static uint8_t tick=0;
 	xQueue = os_create_queue( HEARTBEAT_CONFIG_MAX_QUEUE_LEN , sizeof(xMessage_t ) );
 
@@ -108,11 +107,11 @@ static void heartbeat_thread_func (void * param)
 
 			if(0 == (tick & 0x1))
 			{
-				DEV_IOCTL_0_PARAMS(heartbeat_gpio_dev , IOCTL_GPIO_PIN_CLEAR );
+				DEV_IOCTL_0_PARAMS(l_heartbeat_blinking_gpio_dev , IOCTL_GPIO_PIN_CLEAR );
 			}
 			else
 			{
-				DEV_IOCTL_0_PARAMS(heartbeat_gpio_dev , IOCTL_GPIO_PIN_SET );
+				DEV_IOCTL_0_PARAMS(l_heartbeat_blinking_gpio_dev , IOCTL_GPIO_PIN_SET );
 			}
 			tick++;
 			if (2 == tick)
@@ -121,7 +120,7 @@ static void heartbeat_thread_func (void * param)
 				uint8_t cpu_usage_int_part,cpu_usage_res_part;
 				uint32_t cpu_usage;
 //				uint32_t limiter_hits;
-				DEV_IOCTL_1_PARAMS(heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
+				DEV_IOCTL_1_PARAMS(l_heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
 				cpu_usage_int_part = cpu_usage / 1000;
 				cpu_usage_res_part = cpu_usage - cpu_usage_int_part;
 				PRINTF_DBG("cpu usage = %d.%03d%% \n", cpu_usage_int_part , cpu_usage_res_part);
@@ -159,9 +158,9 @@ uint8_t heartbeat_callback_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 
 
 
-			os_create_task("heartbeat" , heartbeat_thread_func, 0, HEARTBEAT_STACK_SIZE_BYTES , HEARTBEAT_THREAD_PRIORITY);
+			os_create_task("heartbeat" , heartbeat_thread_func, aHandle, HEARTBEAT_STACK_SIZE_BYTES , HEARTBEAT_THREAD_PRIORITY);
 
-			DEV_IOCTL_0_PARAMS(heartbeat_gpio_dev , IOCTL_DEVICE_START );
+			DEV_IOCTL_0_PARAMS(INSTANCE(aHandle)->heartbeat_blinking_gpio_dev , IOCTL_DEVICE_START );
 
 			break;
 		default :

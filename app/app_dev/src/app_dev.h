@@ -17,6 +17,10 @@
 
 /***************   typedefs    *******************/
 
+typedef struct
+{
+	pdev_descriptor_t   i2s_dev;
+} app_instance_t;
 
 
 

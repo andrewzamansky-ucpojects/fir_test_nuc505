@@ -20,6 +20,9 @@
 #define DT_DEV_NAME							heartbeat_callback_dev
 #define DT_DEV_DRIVER						heartbeat_callback
 
+#define HEARTBEAT_CALLBACK_HEARTBEAT_PDEV		heartbeat_dev
+#define HEARTBEAT_CALLBACK_BLINKING_GPIO_PDEV	heartbeat_gpio_dev
+
 #include ADD_CURRENT_DEV
 
 /***********************************/
@@ -95,6 +98,8 @@
 /********** app_dev ********/
 #define DT_DEV_NAME							app_dev
 #define DT_DEV_DRIVER						app_dev
+
+#define	APP_DT_I2S_DEV				i2s_dev
 
 #include ADD_CURRENT_DEV
 
