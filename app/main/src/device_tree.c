@@ -3,16 +3,6 @@
 #include "dev_management_api.h"
 
 
-/**************************************/
-/**** variables initialization  ********/
-
-#define	RX_BUFF_SIZE	256
-uint8_t rx_buff[RX_BUFF_SIZE];
-
-/**** end of variables initialization  ********/
-/**********************************************/
-
-
 
 /***********************************/
 /********** systick_dev ********/
@@ -63,8 +53,7 @@ uint8_t rx_buff[RX_BUFF_SIZE];
 
 #define SW_UART_WRAPPER_DT_SERVER_PDEV		uart0_dev
 #define SW_UART_WRAPPER_DT_CLIENT_PDEV		shell_dev
-#define SW_UART_WRAPPER_DT_RX_BUFFER		rx_buff
-#define SW_UART_WRAPPER_DT_RX_BUFFER_SIZE	RX_BUFF_SIZE
+#define SW_UART_WRAPPER_DT_RX_BUFFER_SIZE	255
 
 #include ADD_CURRENT_DEV
 

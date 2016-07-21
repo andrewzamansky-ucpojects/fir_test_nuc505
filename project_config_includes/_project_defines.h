@@ -44,7 +44,7 @@
 /******   task stack sizes *********/
 #define HEARTBEAT_STACK_SIZE_BYTES				DEFINE_STACK_SIZE( 260 )
 #define MAIN_STACK_SIZE_BYTES					DEFINE_STACK_SIZE( 360 )
-#define SHELL_TASK_STACK_SIZE					DEFINE_STACK_SIZE( 1150 )
+#define SHELL_TASK_STACK_SIZE					DEFINE_STACK_SIZE( 700 )
 #define SW_UART_WRAPPER_TASK_STACK_SIZE			DEFINE_STACK_SIZE( 260 )
 /***********************************/
 
