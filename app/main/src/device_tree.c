@@ -7,7 +7,7 @@
 /***********************************/
 /********** systick_dev ********/
 #define DT_DEV_NAME							systick_dev
-#define DT_DEV_DRIVER						cortexM_systick
+#define DT_DEV_MODULE						cortexM_systick
 
 #define CORTEXM_SYSTICK_DT_INITIAL_RATE		OS_TICK_IN_MICRO_SEC
 #define CORTEXM_SYSTICK_DT_MODE				TIMER_API_PERIODIC_MODE
@@ -18,7 +18,7 @@
 /***********************************/
 /********** heartbeat_callback_dev ********/
 #define DT_DEV_NAME							heartbeat_callback_dev
-#define DT_DEV_DRIVER						heartbeat_callback
+#define DT_DEV_MODULE						heartbeat_callback
 
 #define HEARTBEAT_CALLBACK_HEARTBEAT_PDEV		heartbeat_dev
 #define HEARTBEAT_CALLBACK_BLINKING_GPIO_PDEV	heartbeat_gpio_dev
@@ -28,7 +28,7 @@
 /***********************************/
 /********** heartbeat_dev ********/
 #define DT_DEV_NAME							heartbeat_dev
-#define DT_DEV_DRIVER						heartbeat
+#define DT_DEV_MODULE						heartbeat
 
 #define HEARTBEAT_DT_CALLBACK_PDEV			heartbeat_callback_dev
 #define HEARTBEAT_DT_OS_TIMER_PDEV			systick_dev
@@ -40,7 +40,7 @@
 /***********************************/
 /********** uart0_dev ********/
 #define DT_DEV_NAME							uart0_dev
-#define DT_DEV_DRIVER						uart_nuc505
+#define DT_DEV_MODULE						uart_nuc505
 
 #define UART_NUC505_DT_UART_NUMBER			UART_NUC505_API_UART_ID_0
 #define UART_NUC505_DT_CALLBACK_PDEV		uart0_wrap_dev
@@ -52,7 +52,7 @@
 /***********************************/
 /********** uart0_wrap_dev ********/
 #define DT_DEV_NAME							uart0_wrap_dev
-#define DT_DEV_DRIVER						sw_uart_wrapper
+#define DT_DEV_MODULE						sw_uart_wrapper
 
 #define SW_UART_WRAPPER_DT_SERVER_PDEV		uart0_dev
 #define SW_UART_WRAPPER_DT_CLIENT_PDEV		shell_dev
@@ -64,7 +64,7 @@
 /***********************************/
 /********** shell_dev ********/
 #define DT_DEV_NAME							shell_dev
-#define DT_DEV_DRIVER						shell
+#define DT_DEV_MODULE						shell
 
 #define SHELL_DT_SERVER_PDEV				uart0_wrap_dev
 #define SHELL_DT_CALLBACK_PDEV				u_boot_shell_dev
@@ -75,7 +75,7 @@
 /***********************************/
 /********** u_boot_shell_dev ********/
 #define DT_DEV_NAME							u_boot_shell_dev
-#define DT_DEV_DRIVER						u_boot_shell
+#define DT_DEV_MODULE						u_boot_shell
 
 #define U_BOOT_SHELL_DT_SERVER_PDEV			shell_dev
 
@@ -85,7 +85,7 @@
 /***********************************/
 /********** i2s_dev ********/
 #define DT_DEV_NAME							i2s_dev
-#define DT_DEV_DRIVER						I2S_nuc505
+#define DT_DEV_MODULE						I2S_nuc505
 
 #define I2S_NUC505_DT_NUM_OF_WORDS_IN_BUFFER	I2S_BUFF_LEN
 #define I2S_NUC505_DT_NUM_OF_BYTES_IN_WORD		NUM_OF_BYTES_PER_AUDIO_WORD
@@ -97,7 +97,7 @@
 /***********************************/
 /********** app_dev ********/
 #define DT_DEV_NAME							app_dev
-#define DT_DEV_DRIVER						app_dev
+#define DT_DEV_MODULE						app_dev
 
 #define	APP_DT_I2S_DEV				i2s_dev
 
@@ -108,7 +108,7 @@
 /***********************************/
 /********** heartbeat_gpio_dev ********/
 #define DT_DEV_NAME							heartbeat_gpio_dev
-#define DT_DEV_DRIVER						gpio_nuc505
+#define DT_DEV_MODULE						gpio_nuc505
 
 #define GPIO_NUC505_DT_PORT					GPIO_NUC505_API_PORT_C
 #define GPIO_NUC505_DT_PIN					0x00000008

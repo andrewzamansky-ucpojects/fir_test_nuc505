@@ -24,6 +24,8 @@
 #include "os_wrapper.h"
 #include "gpio_api.h"
 
+#include "heartbeat_callback_add_component.h"
+
 
 /********  defines *********************/
 

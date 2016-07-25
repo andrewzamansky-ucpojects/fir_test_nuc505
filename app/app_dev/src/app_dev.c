@@ -38,6 +38,8 @@
 #include "cpu_config.h"
 #include "arm_math.h"
 
+#include "app_dev_add_component.h"
+
 /********  defines *********************/
 #if (2 == NUM_OF_BYTES_PER_AUDIO_WORD)
 	typedef int16_t	buffer_type_t	;
