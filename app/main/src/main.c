@@ -21,12 +21,7 @@
 
 /*-----------------------------------------------------------*/
 
-extern pdev_descriptor_t systick_dev;
-extern pdev_descriptor_const u_boot_shell_dev;
-extern pdev_descriptor_t heartbeat_dev;
-extern pdev_descriptor_const heartbeat_callback_dev;
-extern pdev_descriptor_const app_dev;
-extern pdev_descriptor_const uart0_wrap_dev;
+static pdev_descriptor_t l_heartbeat_dev;
 
 /*-----------------------------------------------------------*/
 #define CORE_CLOCK_RATE		96000000
@@ -35,7 +30,7 @@ extern pdev_descriptor_const uart0_wrap_dev;
 void busy_delay(uint32_t mSec)
 {
 
-	DEV_IOCTL_1_PARAMS(heartbeat_dev , HEARTBEAT_API_BUSY_WAIT_mS , (void*) mSec);
+	DEV_IOCTL_1_PARAMS(l_heartbeat_dev , HEARTBEAT_API_BUSY_WAIT_mS , (void*) mSec);
 
 }
 
@@ -44,24 +39,37 @@ void busy_delay(uint32_t mSec)
 /*-----------------------------------------------------------*/
 int main( void )
 {
-
+	pdev_descriptor_t dev;
 	clocks_api_set_rate(CONFIG_DT_CORE_CLOCK  , CORE_CLOCK_RATE);
 
-	os_set_heartbeat_dev(heartbeat_dev);
-	os_set_tick_timer_dev(systick_dev);
+	l_heartbeat_dev = DEV_OPEN("heartbeat_dev");
+	if (NULL == l_heartbeat_dev) goto error;
+	os_set_heartbeat_dev(l_heartbeat_dev);
+	dev = DEV_OPEN("systick_dev");
+	if (NULL == dev) goto error;
+	os_set_tick_timer_dev(dev);
 	os_init();
 
-	DEV_IOCTL_0_PARAMS(u_boot_shell_dev , IOCTL_DEVICE_START  );
+	dev = DEV_OPEN("u_boot_shell_dev");
+	if (NULL == dev) goto error;
+	DEV_IOCTL_0_PARAMS(dev , IOCTL_DEVICE_START  );
 
-	DEV_IOCTL_0_PARAMS(heartbeat_callback_dev , IOCTL_DEVICE_START );
+	dev = DEV_OPEN("heartbeat_callback_dev");
+	if (NULL == dev) goto error;
+	DEV_IOCTL_0_PARAMS(dev , IOCTL_DEVICE_START );
 
-	DEV_IOCTL_0_PARAMS(app_dev , IOCTL_DEVICE_START );
+	dev = DEV_OPEN("app_dev");
+	if (NULL == dev) goto error;
+	DEV_IOCTL_0_PARAMS(dev , IOCTL_DEVICE_START );
 
-
-	PRINTF_API_AddDebugOutput(uart0_wrap_dev);
+	dev = DEV_OPEN("uart0_wrap_dev");
+	if (NULL == dev) goto error;
+	PRINTF_API_AddDebugOutput(dev);
 
     os_start();
 
+error :
+	while (1);
 	/* Will only get here if there was not enough heap space to create the
 	idle task. */
 	return 0;
