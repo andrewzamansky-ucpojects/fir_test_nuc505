@@ -3,9 +3,9 @@
 #include  "app_dev_api.h"
 #include "src/app_dev.h"
 
-uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
+uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 		, void * aIoctl_param1 , void * aIoctl_param2);
-uint8_t app_dev_callback(void * const aHandle ,
+uint8_t app_dev_callback(pdev_descriptor_t apdev ,
 		const uint8_t aCallback_num , void * aCallback_param1, void * aCallback_param2);
 
 #define	MODULE_NAME					app_dev

@@ -122,7 +122,7 @@ static dsp_chain_t *pMain_dsp_chain;
 /* Description:                                                                                            */
 /*                                                            						 */
 /*---------------------------------------------------------------------------------------------------------*/
-uint8_t app_dev_callback(void * const aHandle ,
+uint8_t app_dev_callback(pdev_descriptor_t apdev ,
 		const uint8_t aCallback_num , void * aCallback_param1, void * aCallback_param2)
 {
 	xMessage_t  queueMsg;
@@ -366,13 +366,17 @@ uint8_t app_dev_set_cuttof()
 /* Description:                                                                                            */
 /*                                                            						 */
 /*---------------------------------------------------------------------------------------------------------*/
-uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
+uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 		, void * aIoctl_param1 , void * aIoctl_param2)
 {
+	app_instance_t *handle;
 	float threshold ;
 	float gain ;
 	set_channel_weight_t ch_weight;
 	uint8_t retVal;
+
+	handle = apdev->handle;
+
 	switch(aIoctl_num)
 	{
 		case IOCTL_DEVICE_START :
@@ -509,9 +513,9 @@ uint8_t app_dev_ioctl( void * const aHandle ,const uint8_t aIoctl_num
 
 			app_dev_create_signal_flow();
 
-			os_create_task("main" , main_thread_func, aHandle , MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
+			os_create_task("main" , main_thread_func, handle , MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
 
-			DEV_IOCTL_0_PARAMS(INSTANCE(aHandle)->i2s_dev , IOCTL_DEVICE_START );
+			DEV_IOCTL_0_PARAMS(handle->i2s_dev , IOCTL_DEVICE_START );
 
 			break;
 		default :

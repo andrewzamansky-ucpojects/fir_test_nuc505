@@ -67,7 +67,7 @@ static os_queue_t xQueue=NULL ;
 /* Description:																							*/
 /*																					 */
 /*---------------------------------------------------------------------------------------------------------*/
-uint8_t heartbeat_callback_callback(void * const aHandle ,
+uint8_t heartbeat_callback_callback(pdev_descriptor_t apdev ,
 		const uint8_t aCallback_num , void * aCallback_param1, void * aCallback_param2)
 {
 	xMessage_t  queueMsg;
@@ -95,8 +95,8 @@ uint8_t heartbeat_callback_callback(void * const aHandle ,
 static void heartbeat_thread_func (void * aHandle)
 {
 	xMessage_t xRxMessage;
-	pdev_descriptor_const l_heartbeat_blinking_gpio_dev = INSTANCE(aHandle)->heartbeat_blinking_gpio_dev;
-	pdev_descriptor_const l_heartbeat_dev = INSTANCE(aHandle)->heartbeat_dev ;
+	pdev_descriptor_t l_heartbeat_blinking_gpio_dev = INSTANCE(aHandle)->heartbeat_blinking_gpio_dev;
+	pdev_descriptor_t l_heartbeat_dev = INSTANCE(aHandle)->heartbeat_dev ;
 
 	static uint8_t tick=0;
 	xQueue = os_create_queue( HEARTBEAT_CONFIG_MAX_QUEUE_LEN , sizeof(xMessage_t ) );
@@ -150,19 +150,21 @@ static void heartbeat_thread_func (void * aHandle)
 /* Description:																							*/
 /*																					 */
 /*---------------------------------------------------------------------------------------------------------*/
-uint8_t heartbeat_callback_ioctl( void * const aHandle ,const uint8_t aIoctl_num
+uint8_t heartbeat_callback_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 		, void * aIoctl_param1 , void * aIoctl_param2)
 {
+	heartbeat_callback_instance_t *handle;
 
+	handle = apdev->handle;
 	switch(aIoctl_num)
 	{
 		case IOCTL_DEVICE_START :
 
 
 
-			os_create_task("heartbeat" , heartbeat_thread_func, aHandle, HEARTBEAT_STACK_SIZE_BYTES , HEARTBEAT_THREAD_PRIORITY);
+			os_create_task("heartbeat" , heartbeat_thread_func, handle, HEARTBEAT_STACK_SIZE_BYTES , HEARTBEAT_THREAD_PRIORITY);
 
-			DEV_IOCTL_0_PARAMS(INSTANCE(aHandle)->heartbeat_blinking_gpio_dev , IOCTL_DEVICE_START );
+			DEV_IOCTL_0_PARAMS(handle->heartbeat_blinking_gpio_dev , IOCTL_DEVICE_START );
 
 			break;
 		default :
