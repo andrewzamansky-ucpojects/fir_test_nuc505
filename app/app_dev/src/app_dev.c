@@ -369,13 +369,13 @@ uint8_t app_dev_set_cuttof()
 uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 		, void * aIoctl_param1 , void * aIoctl_param2)
 {
-	app_instance_t *handle;
+	app_instance_t *config_handle;
 	float threshold ;
 	float gain ;
 	set_channel_weight_t ch_weight;
 	uint8_t retVal;
 
-	handle = apdev->handle;
+	config_handle = DEV_GET_CONFIG_DATA_POINTER(apdev);
 
 	switch(aIoctl_num)
 	{
@@ -513,9 +513,9 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 
 			app_dev_create_signal_flow();
 
-			os_create_task("main" , main_thread_func, handle , MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
+			os_create_task("main" , main_thread_func, config_handle , MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
 
-			DEV_IOCTL_0_PARAMS(handle->i2s_dev , IOCTL_DEVICE_START );
+			DEV_IOCTL_0_PARAMS(config_handle->i2s_dev , IOCTL_DEVICE_START );
 
 			break;
 		default :

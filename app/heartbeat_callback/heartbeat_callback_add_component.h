@@ -11,7 +11,7 @@ uint8_t heartbeat_callback_callback(pdev_descriptor_t apdev ,
 #define	MODULE_NAME					heartbeat_callback
 #define	MODULE_IOCTL_FUNCTION		heartbeat_callback_ioctl
 #define	MODULE_CALLBACK_FUNCTION	heartbeat_callback_callback
-#define MODULE_DATA_STRUCT_TYPE		heartbeat_callback_instance_t
+#define MODULE_CONFIG_DATA_STRUCT_TYPE		heartbeat_callback_instance_t
 
 #ifdef DT_DEV_MODULE
 

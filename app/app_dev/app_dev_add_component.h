@@ -11,7 +11,7 @@ uint8_t app_dev_callback(pdev_descriptor_t apdev ,
 #define	MODULE_NAME					app_dev
 #define	MODULE_IOCTL_FUNCTION		app_dev_ioctl
 #define	MODULE_CALLBACK_FUNCTION	app_dev_callback
-#define MODULE_DATA_STRUCT_TYPE		app_instance_t
+#define MODULE_CONFIG_DATA_STRUCT_TYPE		app_instance_t
 
 #ifdef DT_DEV_MODULE
 

@@ -3,16 +3,30 @@
 #include "dev_management_api.h"
 
 
+/***********************************/
+/********** soc_clock_control_dev ********/
+#define DT_DEV_NAME							soc_clock_control_dev
+#define DT_DEV_MODULE						clock_control_nuc505
+
+#define CLOCK_CONTROL_NUC505_DT_XTAL_RATE		CONFIG_CRYSTAL_CLOCK
+#define CLOCK_CONTROL_NUC505_DT_CORE_RATE		96000000
+
+#include ADD_CURRENT_DEV
+
+
 
 /***********************************/
 /********** systick_dev ********/
 #define DT_DEV_NAME							systick_dev
 #define DT_DEV_MODULE						cortexM_systick
 
+#define	CORTEXM_SYSTICK_DT_CLOCK_PDEV		soc_clock_control_dev
+#define	CORTEXM_SYSTICK_DT_CLOCK_INDEX		NUC505_CORE_CLOCK
 #define CORTEXM_SYSTICK_DT_INITIAL_RATE		OS_TICK_IN_MICRO_SEC
 #define CORTEXM_SYSTICK_DT_MODE				TIMER_API_PERIODIC_MODE
 
 #include ADD_CURRENT_DEV
+
 
 
 /***********************************/

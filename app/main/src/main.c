@@ -9,10 +9,6 @@
 #include "assert.h"
 #include "os_wrapper.h"
 
-#include "clocks_api.h"
-#include "included_modules.h"
-#include "app_dev_api.h"
-
 #include "heartbeat_api.h"
 
 #define DEBUG
@@ -24,13 +20,12 @@
 static pdev_descriptor_t l_heartbeat_dev;
 
 /*-----------------------------------------------------------*/
-#define CORE_CLOCK_RATE		96000000
 
 
 void busy_delay(uint32_t mSec)
 {
 
-	DEV_IOCTL_1_PARAMS(l_heartbeat_dev , HEARTBEAT_API_BUSY_WAIT_mS , (void*) mSec);
+	DEV_IOCTL_1_PARAMS(l_heartbeat_dev , HEARTBEAT_API_BUSY_WAIT_mS ,  mSec);
 
 }
 
@@ -40,7 +35,9 @@ void busy_delay(uint32_t mSec)
 int main( void )
 {
 	pdev_descriptor_t dev;
-	clocks_api_set_rate(CONFIG_DT_CORE_CLOCK  , CORE_CLOCK_RATE);
+	dev = DEV_OPEN("soc_clock_control_dev");
+	if (NULL == dev) goto error;
+	DEV_IOCTL_0_PARAMS(dev , IOCTL_DEVICE_START  );
 
 	l_heartbeat_dev = DEV_OPEN("heartbeat_dev");
 	if (NULL == l_heartbeat_dev) goto error;

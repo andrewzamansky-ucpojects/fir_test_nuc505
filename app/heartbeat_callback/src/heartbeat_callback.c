@@ -92,14 +92,19 @@ uint8_t heartbeat_callback_callback(pdev_descriptor_t apdev ,
  *
  * @return None
  */
-static void heartbeat_thread_func (void * aHandle)
+static void heartbeat_thread_func (void * apdev)
 {
 	xMessage_t xRxMessage;
-	pdev_descriptor_t l_heartbeat_blinking_gpio_dev = INSTANCE(aHandle)->heartbeat_blinking_gpio_dev;
-	pdev_descriptor_t l_heartbeat_dev = INSTANCE(aHandle)->heartbeat_dev ;
+	heartbeat_callback_instance_t *config_handle;
+	pdev_descriptor_t l_heartbeat_blinking_gpio_dev ;
+	pdev_descriptor_t l_heartbeat_dev ;
 
 	static uint8_t tick=0;
 	xQueue = os_create_queue( HEARTBEAT_CONFIG_MAX_QUEUE_LEN , sizeof(xMessage_t ) );
+
+	config_handle = DEV_GET_CONFIG_DATA_POINTER(apdev);
+	l_heartbeat_blinking_gpio_dev = config_handle->heartbeat_blinking_gpio_dev;
+	l_heartbeat_dev = config_handle->heartbeat_dev ;
 
 
 	while (1)
@@ -153,18 +158,18 @@ static void heartbeat_thread_func (void * aHandle)
 uint8_t heartbeat_callback_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 		, void * aIoctl_param1 , void * aIoctl_param2)
 {
-	heartbeat_callback_instance_t *handle;
+	heartbeat_callback_instance_t *config_handle;
 
-	handle = apdev->handle;
+	config_handle = DEV_GET_CONFIG_DATA_POINTER(apdev);
 	switch(aIoctl_num)
 	{
 		case IOCTL_DEVICE_START :
 
 
 
-			os_create_task("heartbeat" , heartbeat_thread_func, handle, HEARTBEAT_STACK_SIZE_BYTES , HEARTBEAT_THREAD_PRIORITY);
+			os_create_task("heartbeat" , heartbeat_thread_func, apdev, HEARTBEAT_STACK_SIZE_BYTES , HEARTBEAT_THREAD_PRIORITY);
 
-			DEV_IOCTL_0_PARAMS(handle->heartbeat_blinking_gpio_dev , IOCTL_DEVICE_START );
+			DEV_IOCTL_0_PARAMS(config_handle->heartbeat_blinking_gpio_dev , IOCTL_DEVICE_START );
 
 			break;
 		default :
