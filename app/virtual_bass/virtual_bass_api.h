@@ -18,11 +18,7 @@
 /**********  define API  functions  ************/
 
 
-uint8_t  virtual_bass_api_init_dsp_descriptor(pdsp_descriptor aDspDescriptor);
-
-//#include "src/_virtual_bass_static_dev_macros.h"
-//
-//#define VIRTUAL_BASS_API_CREATE_STATIC_DEV(dev,dev_name)  __VIRTUAL_BASS_API_CREATE_STATIC_DEV(dev,dev_name )
-//
+extern char virtual_bass_module_name[] ;
+#define VIRTUAL_BASS_API_MODULE_NAME	virtual_bass_module_name
 
 #endif

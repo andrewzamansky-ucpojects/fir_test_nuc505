@@ -218,25 +218,38 @@ static void main_thread_func (void * aHandle)
 /*---------------------------------------------------------------------------------------------------------*/
 static uint8_t app_dev_create_signal_flow()
 {
+	/*
+                                          -> hpf_filter_left  ->                              ------>     => adder_bass_with_left_channel -> leftChanelEQ --
+                                        /                       \                            /          /                                                     \
+                                       /                          => voice_3d   ===========>           /                                                        => compressor_limiter => app_I2S_mixer
+                                      /                         /                            \        /                                                       /
+                                        -> hpf_filter_right ->                                ------>/ => adder_bass_with_right_channel  -> rightChanelEQ  --
+                                    /                                                               /
+        source ->  app_I2S_spliter                                                                 /
+                                   \                                                              /
+                                     => stereo_to_mono -> lpf_filter -> vb -> vb_final_filter -> /
+
+	 */
+
 	pMain_dsp_chain = DSP_CREATE_CHAIN(16);
 	//******* distribute L-R **********/
 	DSP_CREATE_LINK(&source,DSP_OUTPUT_PAD_0,&app_I2S_spliter,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &app_I2S_spliter);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , I2S_SPLITTER_API_MODULE_NAME ,&app_I2S_spliter );
 
 	/******** LF path **********/
 	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_0,&stereo_to_mono,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_1,&stereo_to_mono,DSP_INPUT_PAD_1);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &stereo_to_mono);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &stereo_to_mono);
 
 	DSP_CREATE_LINK(&stereo_to_mono,DSP_OUTPUT_PAD_0,&lpf_filter,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &lpf_filter);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &lpf_filter);
 
 	/********  VB  ************/
 	DSP_CREATE_LINK(&lpf_filter,DSP_OUTPUT_PAD_0,&vb,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &vb);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , VIRTUAL_BASS_API_MODULE_NAME , &vb);
 
 	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&vb_final_filter,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &vb_final_filter);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &vb_final_filter);
 	/******* end of VB   *********/
 
 	/********* end of LF path    **********/
@@ -245,45 +258,45 @@ static uint8_t app_dev_create_signal_flow()
 	/********** HF path *********/
 
 	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_0,&hpf_filter_left,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &hpf_filter_left);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &hpf_filter_left);
 	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_1,&hpf_filter_right,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &hpf_filter_right);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &hpf_filter_right);
 
 	DSP_CREATE_LINK(&hpf_filter_left,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&hpf_filter_right,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_1);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &voice_3d);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , VOICE_3D_API_MODULE_NAME , &voice_3d);
 
 	/********* end of HF path  *********/
 
 	/********** collecting LF and HF pathes together with phase change on HF *********/
 	DSP_CREATE_LINK(&vb_final_filter,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&voice_3d,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_1);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &adder_bass_with_left_channel);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &adder_bass_with_left_channel);
 
 	DSP_CREATE_LINK(&vb_final_filter,DSP_OUTPUT_PAD_0,&adder_bass_with_right_channel,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&voice_3d,DSP_OUTPUT_PAD_1,&adder_bass_with_right_channel,DSP_INPUT_PAD_1);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &adder_bass_with_right_channel);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &adder_bass_with_right_channel);
 
 	/********** end of collecting LF and HF pathes together  *********/
 
 	/********** EQ+Compressor  *********/
 
 	DSP_CREATE_LINK(&adder_bass_with_left_channel,DSP_OUTPUT_PAD_0,&leftChanelEQ,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &leftChanelEQ);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &leftChanelEQ);
 
 	DSP_CREATE_LINK(&adder_bass_with_right_channel,DSP_OUTPUT_PAD_0,&rightChanelEQ,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &rightChanelEQ);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &rightChanelEQ);
 
 	DSP_CREATE_LINK(&leftChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&rightChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_1);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &compressor_limiter);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , COMPRESSOR_API_MODULE_NAME , &compressor_limiter);
 
 	/********** end ofEQ+Compressor  *********/
 
 	/********** mix 2 channels to I2S bus  *********/
 	DSP_CREATE_LINK(&compressor_limiter,DSP_OUTPUT_PAD_0,&app_I2S_mixer,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&compressor_limiter,DSP_OUTPUT_PAD_1,&app_I2S_mixer,DSP_INPUT_PAD_1);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , &app_I2S_mixer);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , I2S_MIXER_API_MODULE_NAME , &app_I2S_mixer);
 
 
 	return 0;
@@ -373,7 +386,6 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 	float threshold ;
 	float gain ;
 	set_channel_weight_t ch_weight;
-	uint8_t retVal;
 
 	config_handle = DEV_GET_CONFIG_DATA_POINTER(apdev);
 
@@ -386,107 +398,75 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 			dsp_buffers_pool = memory_pool_init(5 , I2S_BUFF_LEN * sizeof(float));
 			dsp_management_api_set_buffers_pool(dsp_buffers_pool);
 
-			/**************  I2S splitter and mixer  *************/
-			retVal = I2S_splitter_api_init_dsp_descriptor(&app_I2S_spliter);
-			if(retVal) while(1);
-			DSP_IOCTL_0_PARAMS(&app_I2S_spliter , IOCTL_DEVICE_START );
-
-			retVal = I2S_mixer_api_init_dsp_descriptor(&app_I2S_mixer);
-			if(retVal) while(1);
-			DSP_IOCTL_0_PARAMS(&app_I2S_mixer , IOCTL_DEVICE_START );
+			app_dev_create_signal_flow();
 
 
 
-			/**************   mixers  *************/
-			retVal = mixer_api_init_dsp_descriptor(&stereo_to_mono);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_NUM_OF_CHANNELS , ((void*)2) );
+			/**************   LPF path  *************/
+			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_NUM_OF_CHANNELS , 2 );
 			ch_weight.channel_num = 0;
 			ch_weight.weight = 0.5;
 			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
 			ch_weight.channel_num = 1;
 			ch_weight.weight = 0.5;
 			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-			DSP_IOCTL_0_PARAMS(&stereo_to_mono , IOCTL_DEVICE_START );
 
-			retVal = mixer_api_init_dsp_descriptor(&adder_bass_with_left_channel);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_NUM_OF_CHANNELS , ((void*)2) );
-			ch_weight.channel_num = 0;
-			ch_weight.weight = 1;
-			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-			ch_weight.channel_num = 1;
-			ch_weight.weight = 1;
-			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-			DSP_IOCTL_0_PARAMS(&adder_bass_with_left_channel , IOCTL_DEVICE_START );
+			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 2 );
 
-			retVal = mixer_api_init_dsp_descriptor(&adder_bass_with_right_channel);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_NUM_OF_CHANNELS , ((void*)2) );
-			ch_weight.channel_num = 0;
-			ch_weight.weight = 1;
-			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-			ch_weight.channel_num = 1;
-			ch_weight.weight = 1;
-			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-			DSP_IOCTL_0_PARAMS(&adder_bass_with_right_channel , IOCTL_DEVICE_START );
-
-
-			retVal = equalizer_api_init_dsp_descriptor(&lpf_filter);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
-			DSP_IOCTL_0_PARAMS(&lpf_filter , IOCTL_DEVICE_START );
-
-
-			retVal = equalizer_api_init_dsp_descriptor(&hpf_filter_left);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
-			DSP_IOCTL_0_PARAMS(&hpf_filter_left , IOCTL_DEVICE_START );
-
-			retVal = equalizer_api_init_dsp_descriptor(&hpf_filter_right);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)2) );
-			DSP_IOCTL_0_PARAMS(&hpf_filter_right , IOCTL_DEVICE_START );
-
-
-
-
-			retVal = virtual_bass_api_init_dsp_descriptor(&vb);
-			if(retVal) while(1);
-			DSP_IOCTL_0_PARAMS(&vb , IOCTL_DEVICE_START );
 			dsp_management_api_set_module_control(&vb , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
-			retVal = equalizer_api_init_dsp_descriptor(&vb_final_filter);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)3) );
-			DSP_IOCTL_0_PARAMS(&vb_final_filter , IOCTL_DEVICE_START );
+			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
 			dsp_management_api_set_module_control(&vb_final_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_MUTE);
 			dsp_management_api_set_module_control(&lpf_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
-			dsp_management_api_set_module_control(&hpf_filter_left , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
-			dsp_management_api_set_module_control(&hpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);			app_dev_set_cuttof();
 
-			/**************   eq filters  *************/
-			retVal = equalizer_api_init_dsp_descriptor(&leftChanelEQ);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&leftChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)7) );
-			DSP_IOCTL_0_PARAMS(&leftChanelEQ , IOCTL_DEVICE_START );
-			equalizer_api_init_dsp_descriptor(&rightChanelEQ);
-			DSP_IOCTL_1_PARAMS(&rightChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , ((void*)(size_t)7) );
-			DSP_IOCTL_0_PARAMS(&rightChanelEQ , IOCTL_DEVICE_START );
+			/**************   LPF path  *************/
+			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 2 );
+			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 2 );
+//			dsp_management_api_set_module_control(&hpf_filter_left , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
+//			dsp_management_api_set_module_control(&hpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
+
+			gain=0.5;
+			DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_MEDIUM_GAIN , &gain );
+			gain = 0.5;
+			DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_SIDE_GAIN , &gain );
+			gain = 0 ;
+			DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_3D_GAIN , &gain );
+
+			/**************  final mixed LPF+HPF path  *************/
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_NUM_OF_CHANNELS , 2 );
+			ch_weight.channel_num = 0;
+			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+			ch_weight.channel_num = 1;
+			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+
+
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_NUM_OF_CHANNELS , 2 );
+			ch_weight.channel_num = 0;
+			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+			ch_weight.channel_num = 1;
+			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+
+
+
+			     /*    eq filters   */
+			DSP_IOCTL_1_PARAMS(&leftChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS ,7 );
+			DSP_IOCTL_1_PARAMS(&rightChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 7);
+
+
 #if 1// look_ahead_compressor
-			retVal = compressor_api_init_dsp_descriptor(&compressor_limiter);
-			if(retVal) while(1);
-			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , ((void*)(size_t)COMPRESSOR_API_TYPE_LOOKAHEAD) );
+			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , COMPRESSOR_API_TYPE_LOOKAHEAD );
 			threshold=0.95;
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
-			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LOOK_AHEAD_SIZE , ((void*)(size_t)LATENCY_LENGTH) );
+			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LOOK_AHEAD_SIZE , LATENCY_LENGTH );
 #else
 			{
 				float attack,release,ratio;
-				retVal = compressor_api_init_dsp_descriptor(&compressor_limiter);
-				if(retVal) while(1);
-				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , ((void*)(size_t)COMPRESSOR_API_TYPE_REGULAR) );
+				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , COMPRESSOR_API_TYPE_REGULAR );
 				threshold=0.125;
 				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
 				attack = 0.5;
@@ -497,21 +477,10 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RATIO , &ratio );
 			}
 #endif
-			DSP_IOCTL_0_PARAMS(&compressor_limiter , IOCTL_DEVICE_START );
 			dsp_management_api_set_module_control(&compressor_limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
-			retVal = voice_3D_api_init_dsp_descriptor(&voice_3d);
-			if(retVal) while(1);
-			gain=0.5;
-			DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_MEDIUM_GAIN , &gain );
-			gain = 0.5;
-			DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_SIDE_GAIN , &gain );
-			gain = 0 ;
-			DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_3D_GAIN , &gain );
+			app_dev_set_cuttof();
 
-			DSP_IOCTL_0_PARAMS(&voice_3d , IOCTL_DEVICE_START );
-
-			app_dev_create_signal_flow();
 
 			os_create_task("main" , main_thread_func, config_handle , MAIN_STACK_SIZE_BYTES , APP_DEV_THREAD_PRIORITY);
 

@@ -18,6 +18,8 @@
 #include "virtual_bass.h"
 #include "common_dsp_api.h"
 
+#include "auto_init_api.h"
+
 #include "math.h"
 
 #ifdef CONFIG_USE_HW_DSP
@@ -33,8 +35,9 @@
 /********  externals *********************/
 
 
-/********  local defs *********************/
+/********  exported variables *********************/
 
+char virtual_bass_module_name[] = "virtual_bass";
 
 
 /**********   external variables    **************/
@@ -221,18 +224,15 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 /*---------------------------------------------------------------------------------------------------------*/
 uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , void * aIoctl_param1 , void * aIoctl_param2)
 {
+	VIRTUAL_BASS_Instance_t *handle = apdsp->handle;;
 
 	switch(aIoctl_num)
 	{
-//#if VIRTUAL_BASS_CONFIG_NUM_OF_DYNAMIC_INSTANCES > 0
-//		case IOCTL_GET_PARAMS_ARRAY_FUNC :
-//			*(const dev_param_t**)aIoctl_param1  = VIRTUAL_BASS_Dev_Params;
-//			*(uint8_t*)aIoctl_param2 = sizeof(VIRTUAL_BASS_Dev_Params)/sizeof(dev_param_t); //size
-//			break;
-//#endif // for VIRTUAL_BASS_CONFIG_NUM_OF_DYNAMIC_INSTANCES > 0
 
-
-		case IOCTL_DEVICE_START :
+		case IOCTL_DSP_INIT :
+			handle->envelope_folower = 0 ;
+			handle->prev_x =  0 ;
+			handle->prev_harmonic_out = 0;
 
 			break;
 
@@ -243,8 +243,9 @@ uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , voi
 }
 
 
+
 /*---------------------------------------------------------------------------------------------------------*/
-/* Function:        VIRTUAL_BASS_API_Init_Dev_Descriptor                                                                          */
+/* Function:        virtual_bass_init                                                                          */
 /*                                                                                                         */
 /* Parameters:                                                                                             */
 /*                                                                                         */
@@ -254,22 +255,9 @@ uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , voi
 /* Description:                                                                                            */
 /*                                                            						 */
 /*---------------------------------------------------------------------------------------------------------*/
-uint8_t  virtual_bass_api_init_dsp_descriptor(pdsp_descriptor aDspDescriptor)
+void  virtual_bass_init(void)
 {
-	VIRTUAL_BASS_Instance_t *pInstance;
-
-	if(NULL == aDspDescriptor) return 1;
-
-	pInstance = (VIRTUAL_BASS_Instance_t *)malloc(sizeof(VIRTUAL_BASS_Instance_t));
-	if(NULL == pInstance) return 1;
-
-	aDspDescriptor->handle = pInstance;
-	aDspDescriptor->ioctl = virtual_bass_ioctl;
-	aDspDescriptor->dsp_func = virtual_bass_dsp;
-	pInstance->envelope_folower = 0 ;
-	pInstance->prev_x =  0 ;
-	pInstance->prev_harmonic_out = 0;
-
-	return 0 ;
-
+	DSP_REGISTER_NEW_MODULE("virtual_bass",virtual_bass_ioctl , virtual_bass_dsp , VIRTUAL_BASS_Instance_t);
 }
+
+AUTO_INIT_FUNCTION(virtual_bass_init);
