@@ -57,20 +57,30 @@
 #define DT_DEV_MODULE						uart_nuc505
 
 #define UART_NUC505_DT_BASE_ADDRESS			UART_NUC505_API_BASE_ADDRESS_UART0
-#define UART_NUC505_DT_CALLBACK_PDEV		uart0_wrap_dev
+#define UART_NUC505_DT_TX_CALLBACK_PDEV		uart0_tx_wrap_dev
+#define UART_NUC505_DT_RX_CALLBACK_PDEV		uart0_rx_wrap_dev
 #define UART_NUC505_DT_BAUD_RATE			115200
 
 #include ADD_CURRENT_DEV
 
 
 /***********************************/
-/********** uart0_wrap_dev ********/
-#define DT_DEV_NAME							uart0_wrap_dev
-#define DT_DEV_MODULE						sw_uart_wrapper
+/********** uart0_tx_wrap_dev ********/
+#define DT_DEV_NAME							uart0_tx_wrap_dev
+#define DT_DEV_MODULE						async_tx_wrapper
 
-#define SW_UART_WRAPPER_DT_SERVER_PDEV		uart0_dev
-#define SW_UART_WRAPPER_DT_CLIENT_PDEV		shell_dev
-#define SW_UART_WRAPPER_DT_RX_BUFFER_SIZE	255
+#define ASYNC_TX_WRAPPER_DT_SERVER_PDEV		uart0_dev
+
+#include ADD_CURRENT_DEV
+
+/***********************************/
+/********** uart0_rx_wrap_dev ********/
+#define DT_DEV_NAME							uart0_rx_wrap_dev
+#define DT_DEV_MODULE						async_rx_wrapper
+
+#define ASYNC_RX_WRAPPER_DT_SERVER_PDEV		uart0_dev
+#define ASYNC_RX_WRAPPER_DT_CLIENT_PDEV		shell_dev
+#define ASYNC_RX_WRAPPER_DT_RX_BUFFER_SIZE	255
 
 #include ADD_CURRENT_DEV
 
@@ -80,7 +90,8 @@
 #define DT_DEV_NAME							shell_dev
 #define DT_DEV_MODULE						shell
 
-#define SHELL_DT_SERVER_PDEV				uart0_wrap_dev
+#define SHELL_DT_RX_SERVER_PDEV				uart0_rx_wrap_dev
+#define SHELL_DT_TX_SERVER_PDEV				uart0_tx_wrap_dev
 #define SHELL_DT_CALLBACK_PDEV				u_boot_shell_dev
 
 #include ADD_CURRENT_DEV

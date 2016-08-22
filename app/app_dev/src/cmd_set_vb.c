@@ -44,9 +44,9 @@ int do_set_vb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	os_mutex_take_infinite_wait(control_mutex);
 
-	HARMONICS_GAIN = (float)atof(argv[1]);
-	COMPR_ATTACK = (float)atof(argv[2]);
-	COMPR_REALESE = (float)atof(argv[3]);
+//	HARMONICS_GAIN = (float)atof(argv[1]);
+//	COMPR_ATTACK = (float)atof(argv[2]);
+//	COMPR_REALESE = (float)atof(argv[3]);
 
 	os_mutex_give(control_mutex);
 

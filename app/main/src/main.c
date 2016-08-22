@@ -59,7 +59,7 @@ int main( void )
 	if (NULL == dev) goto error;
 	DEV_IOCTL_0_PARAMS(dev , IOCTL_DEVICE_START );
 
-	dev = DEV_OPEN("uart0_wrap_dev");
+	dev = DEV_OPEN("uart0_tx_wrap_dev");
 	if (NULL == dev) goto error;
 	PRINTF_API_AddDebugOutput(dev);
 
