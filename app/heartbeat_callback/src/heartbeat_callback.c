@@ -55,6 +55,8 @@ typedef struct
 
 static os_queue_t xQueue=NULL ;
 
+/* global to control report interval - controlled by cmd_set_cpu_stat_interval */
+uint8_t cpu_stat_report_interval = 2;
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:		heartbeat_callback																		  */
@@ -121,7 +123,7 @@ static void heartbeat_thread_func (void * apdev)
 				DEV_IOCTL_0_PARAMS(l_heartbeat_blinking_gpio_dev , IOCTL_GPIO_PIN_SET );
 			}
 			tick++;
-			if (2 == tick)
+			if ((cpu_stat_report_interval != 0) && (cpu_stat_report_interval == tick))
 			{
 				tick = 0;
 				uint8_t cpu_usage_int_part,cpu_usage_res_part;

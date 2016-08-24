@@ -23,6 +23,7 @@ SRC += cmd_ctl.c
 SRC += cmd_set_eq_band.c
 SRC += cmd_set_vol.c
 SRC += cmd_set_i2s_loopback.c
+SRC += cmd_set_cpu_stat_interval.c
 
 SPEED_CRITICAL_FILES += app_dev.c
 
