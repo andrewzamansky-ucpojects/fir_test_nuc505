@@ -44,7 +44,7 @@ int do_set_vbi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	os_mutex_take_infinite_wait(control_mutex);
 
 	vb_volume = (float)atof(argv[1]) /100 * 0.85;
-
+	PRINTF_DBG("vb_volume = %f\n",vb_volume);
 	os_mutex_give(control_mutex);
 
 	return 0;

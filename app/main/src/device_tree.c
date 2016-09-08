@@ -140,3 +140,28 @@
 #define GPIO_NUC505_DT_MODE					GPIO_NUC505_API_MODE_OUT_PP
 
 #include ADD_CURRENT_DEV
+
+
+#if 1
+/***********************************/
+/********** debug_gpio0_dev ********/
+#define DT_DEV_NAME							debug_gpio0_dev
+#define DT_DEV_MODULE						gpio_nuc505
+
+#define GPIO_NUC505_DT_PORT					GPIO_NUC505_API_PORT_C     				/* port number */
+#define GPIO_NUC505_DT_PIN					(GPIO_NUC505_API_PIN_5)					/* pin mask, EVB: pin 13*/
+#define GPIO_NUC505_DT_MODE					GPIO_NUC505_API_MODE_OUT_PP 			/* pin mode */
+
+#include ADD_CURRENT_DEV
+
+/***********************************/
+/********** debug_gpio1_dev ********/
+#define DT_DEV_NAME							debug_gpio1_dev
+#define DT_DEV_MODULE						gpio_nuc505
+
+#define GPIO_NUC505_DT_PORT					GPIO_NUC505_API_PORT_C     				/* port number */
+#define GPIO_NUC505_DT_PIN					(GPIO_NUC505_API_PIN_6)					/* pin mask, EVB: pin 14*/
+#define GPIO_NUC505_DT_MODE					GPIO_NUC505_API_MODE_OUT_PP 			/* pin mode */
+
+#include ADD_CURRENT_DEV
+#endif

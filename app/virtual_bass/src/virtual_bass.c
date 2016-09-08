@@ -27,6 +27,9 @@
   #include "arm_math.h"
 #endif
 
+#define DEBUG
+#include "gpio_api.h"
+
 /********  defines *********************/
 
 
@@ -34,6 +37,7 @@
 
 /********  externals *********************/
 
+extern pdev_descriptor_t debug_io0_dev, debug_io1_dev;
 
 /********  exported variables *********************/
 
@@ -129,8 +133,11 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 
 //	uint8_t envelope_folower_sample_count =ENVELOP_FOLLOWER_SAMPLE_RATE;
 	float envelope_folower;
-	float curr_y,curr_x , curr_x_log;
+	float curr_y,curr_x , curr_x_log; // curr_x_log is in dB.
 
+
+	DEV_IOCTL_0_PARAMS(debug_io0_dev , IOCTL_GPIO_PIN_SET );
+	DEV_IOCTL_0_PARAMS(debug_io1_dev , IOCTL_GPIO_PIN_SET );
 
 	handle = apdsp->handle;
 	envelope_folower = handle->envelope_folower ;
@@ -153,14 +160,14 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 		curr_x = *apCh1In++;
 
 		mon = curr_x;
-		// calculate 20*log(x)
+		// calculate 20*log(x) - convert to dB
 		curr_x_log = log2f_approx(curr_x);
 		curr_x_log *= LOG_COEFF;
 		mon = curr_x_log;
 		delta = 0;
 		if(curr_x_log > THRESHOLD)
 		{
-			delta = curr_x_log - THRESHOLD;
+			delta = curr_x_log - THRESHOLD; // delta = in dB, how much we crossed the threshold
 		}
 		mon = delta;
 
@@ -195,7 +202,7 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 		mon = tmp;
 
 		tmp /= 20;
-		curr_ratio = fast_pow(10 , tmp);
+		curr_ratio = fast_pow(10 , tmp); // translate from dB to linear ratio
 		mon = curr_ratio;
 
 		curr_y = curr_x * curr_ratio;
@@ -206,7 +213,8 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 
 
 	handle->envelope_folower =envelope_folower ;
-
+	DEV_IOCTL_0_PARAMS(debug_io0_dev , IOCTL_GPIO_PIN_CLEAR );
+	DEV_IOCTL_0_PARAMS(debug_io1_dev , IOCTL_GPIO_PIN_CLEAR );
 
 }
 
