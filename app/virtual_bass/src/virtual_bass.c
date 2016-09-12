@@ -135,10 +135,6 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 	float envelope_folower;
 	float curr_y,curr_x , curr_x_log; // curr_x_log is in dB.
 
-
-	DEV_IOCTL_0_PARAMS(debug_io0_dev , IOCTL_GPIO_PIN_SET );
-	DEV_IOCTL_0_PARAMS(debug_io1_dev , IOCTL_GPIO_PIN_SET );
-
 	handle = apdsp->handle;
 	envelope_folower = handle->envelope_folower ;
 
@@ -213,8 +209,6 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 
 
 	handle->envelope_folower =envelope_folower ;
-	DEV_IOCTL_0_PARAMS(debug_io0_dev , IOCTL_GPIO_PIN_CLEAR );
-	DEV_IOCTL_0_PARAMS(debug_io1_dev , IOCTL_GPIO_PIN_CLEAR );
 
 }
 

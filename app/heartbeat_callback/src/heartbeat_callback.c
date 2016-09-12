@@ -36,7 +36,7 @@
 /********  types  *********************/
 
 /********  externals *********************/
-
+extern float g_max_out_val;
 
 
 /********  local defs *********************/
@@ -132,7 +132,8 @@ static void heartbeat_thread_func (void * apdev)
 				DEV_IOCTL_1_PARAMS(l_heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
 				cpu_usage_int_part = cpu_usage / 1000;
 				cpu_usage_res_part = cpu_usage - cpu_usage_int_part;
-				PRINTF_DBG("cpu usage = %d.%03d%% \n", cpu_usage_int_part , cpu_usage_res_part);
+				//PRINTF_DBG("cpu usage = %d.%03d%% \n\r", cpu_usage_int_part , cpu_usage_res_part);
+				PRINTF_DBG("max_out = %f\n\r",g_max_out_val);
 //				DEV_IOCTL(&compressor_limiter, IOCTL_COMPRESSOR_GET_HIT_COUNTER ,&limiter_hits);
 //				PRINTF_DBG("limiter = %d  \n", limiter_hits );
 			}
