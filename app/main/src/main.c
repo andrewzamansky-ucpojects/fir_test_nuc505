@@ -19,6 +19,8 @@
 
 static pdev_descriptor_t l_heartbeat_dev;
 
+pdev_descriptor_t debug_io0_dev, debug_io1_dev;
+
 /*-----------------------------------------------------------*/
 
 
@@ -42,6 +44,7 @@ int main( void )
 	l_heartbeat_dev = DEV_OPEN("heartbeat_dev");
 	if (NULL == l_heartbeat_dev) goto error;
 	os_set_heartbeat_dev(l_heartbeat_dev);
+
 	dev = DEV_OPEN("systick_dev");
 	if (NULL == dev) goto error;
 	os_set_tick_timer_dev(dev);
@@ -62,6 +65,16 @@ int main( void )
 	dev = DEV_OPEN("uart0_tx_wrap_dev");
 	if (NULL == dev) goto error;
 	PRINTF_API_AddDebugOutput(dev);
+
+
+	debug_io0_dev = DEV_OPEN("debug_gpio0_dev");
+	if (NULL == debug_io0_dev) goto error;
+	DEV_IOCTL_0_PARAMS(debug_io0_dev , IOCTL_DEVICE_START );
+
+
+	debug_io1_dev = DEV_OPEN("debug_gpio1_dev");
+	if (NULL == debug_io1_dev) goto error;
+	DEV_IOCTL_0_PARAMS(debug_io1_dev , IOCTL_DEVICE_START );
 
     os_start();
 

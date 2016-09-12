@@ -36,7 +36,7 @@
 /********  types  *********************/
 
 /********  externals *********************/
-
+extern float g_max_out_val;
 
 
 /********  local defs *********************/
@@ -55,6 +55,8 @@ typedef struct
 
 static os_queue_t xQueue=NULL ;
 
+/* global to control report interval - controlled by cmd_set_cpu_stat_interval */
+uint8_t cpu_stat_report_interval = 0;
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:		heartbeat_callback																		  */
@@ -121,7 +123,7 @@ static void heartbeat_thread_func (void * apdev)
 				DEV_IOCTL_0_PARAMS(l_heartbeat_blinking_gpio_dev , IOCTL_GPIO_PIN_SET );
 			}
 			tick++;
-			if (2 == tick)
+			if ((cpu_stat_report_interval != 0) && (cpu_stat_report_interval < tick))
 			{
 				tick = 0;
 				uint8_t cpu_usage_int_part,cpu_usage_res_part;
@@ -130,7 +132,8 @@ static void heartbeat_thread_func (void * apdev)
 				DEV_IOCTL_1_PARAMS(l_heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
 				cpu_usage_int_part = cpu_usage / 1000;
 				cpu_usage_res_part = cpu_usage - cpu_usage_int_part;
-				PRINTF_DBG("cpu usage = %d.%03d%% \n", cpu_usage_int_part , cpu_usage_res_part);
+				//PRINTF_DBG("cpu usage = %d.%03d%% \n\r", cpu_usage_int_part , cpu_usage_res_part);
+				PRINTF_DBG("max_out = %f\n\r",g_max_out_val);
 //				DEV_IOCTL(&compressor_limiter, IOCTL_COMPRESSOR_GET_HIT_COUNTER ,&limiter_hits);
 //				PRINTF_DBG("limiter = %d  \n", limiter_hits );
 			}

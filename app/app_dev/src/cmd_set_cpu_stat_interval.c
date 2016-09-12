@@ -11,15 +11,13 @@
 #include "u-boot/include/command.h"
 #include "shell_api.h"
 
-#include "dsp_management_api.h"
-#include "os_wrapper.h"
 
-extern float vb_volume ;
 
+extern uint8_t cpu_stat_report_interval;
 extern os_mutex_t  control_mutex;
 
 /*
- * Subroutine:  do_set_comressor
+ * Subroutine:  do_set_cpu_stat_interval
  *
  * Description:
  *
@@ -28,10 +26,11 @@ extern os_mutex_t  control_mutex;
  * Return:      None
  *
  */
-int do_set_vbi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+
+int do_set_cpu_stat_interval (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
-
+	uint32_t interval;
 
 	if(argc < 2)
 	{
@@ -39,19 +38,24 @@ int do_set_vbi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return 1;
 	}
 
-	// should be transformed to ioctls !!
 
 	os_mutex_take_infinite_wait(control_mutex);
 
-	vb_volume = (float)atof(argv[1]) /100 * 0.85;
-	PRINTF_DBG("vb_volume = %f\n",vb_volume);
+	interval = (uint32_t)atol(argv[1]);
+	if (interval > 255)
+	{
+		SHELL_REPLY_STR("out of range\n");
+		return 1;
+	}
+
+	cpu_stat_report_interval = (uint8_t) interval;
 	os_mutex_give(control_mutex);
 
 	return 0;
 }
 
 U_BOOT_CMD(
-	set_vbi,     255,	0,	do_set_vbi,
-	"set_vbi  vol",
+	set_cpu_stat_interval,     255,	0,	do_set_cpu_stat_interval,
+	"set_cpu_stat_interval <seconds> (0 = mute)",
 	"info   - \n"
 );
