@@ -12,11 +12,10 @@
 #include "shell_api.h"
 
 #include "dsp_management_api.h"
-#include "mixer_api.h"
+#include "I2S_mixer_api.h"
 #include "os_wrapper.h"
 
-extern dsp_descriptor_t adder_bass_with_left_channel;
-extern dsp_descriptor_t adder_bass_with_right_channel;
+extern dsp_descriptor_t app_I2S_mixer;
 extern os_mutex_t  control_mutex;
 
 /*
@@ -31,7 +30,6 @@ extern os_mutex_t  control_mutex;
  */
 int do_set_vol (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	set_channel_weight_t ch_weight;
 
 	float volume  ;
 
@@ -46,20 +44,8 @@ int do_set_vol (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	os_mutex_take_infinite_wait(control_mutex);
 
-	ch_weight.channel_num = 0;
-	ch_weight.weight = volume;
-	DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-	ch_weight.channel_num = 1;
-	ch_weight.weight = volume;
-	DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
+	DSP_IOCTL_1_PARAMS(&app_I2S_mixer , IOCTL_I2S_MIXER_SET_OUT_LEVEL , &volume  );
 
-
-	ch_weight.channel_num = 0;
-	ch_weight.weight = volume;
-	DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-	ch_weight.channel_num = 1;
-	ch_weight.weight = volume;
-	DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
 	os_mutex_give(control_mutex);
 
 	return 0;

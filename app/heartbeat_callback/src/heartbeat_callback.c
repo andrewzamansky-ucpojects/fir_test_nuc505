@@ -25,6 +25,7 @@
 #include "gpio_api.h"
 
 #include "heartbeat_callback_add_component.h"
+#include "I2S_mixer_api.h"
 
 
 /********  defines *********************/
@@ -36,8 +37,8 @@
 /********  types  *********************/
 
 /********  externals *********************/
-extern float g_max_out_val;
 
+extern dsp_descriptor_t app_I2S_mixer;
 
 /********  local defs *********************/
 
@@ -56,7 +57,7 @@ typedef struct
 static os_queue_t xQueue=NULL ;
 
 /* global to control report interval - controlled by cmd_set_cpu_stat_interval */
-uint8_t cpu_stat_report_interval = 0;
+uint8_t cpu_stat_report_interval = 1;
 
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:		heartbeat_callback																		  */
@@ -100,6 +101,7 @@ static void heartbeat_thread_func (void * apdev)
 	heartbeat_callback_instance_t *config_handle;
 	pdev_descriptor_t l_heartbeat_blinking_gpio_dev ;
 	pdev_descriptor_t l_heartbeat_dev ;
+	float max_out_val;
 
 	static uint8_t tick=0;
 	xQueue = os_create_queue( HEARTBEAT_CONFIG_MAX_QUEUE_LEN , sizeof(xMessage_t ) );
@@ -108,6 +110,7 @@ static void heartbeat_thread_func (void * apdev)
 	l_heartbeat_blinking_gpio_dev = config_handle->heartbeat_blinking_gpio_dev;
 	l_heartbeat_dev = config_handle->heartbeat_dev ;
 
+	DSP_IOCTL_0_PARAMS(&app_I2S_mixer , IOCTL_I2S_MIXER_ENABLE_TEST_CLIPPING );
 
 	while (1)
 	{
@@ -132,8 +135,10 @@ static void heartbeat_thread_func (void * apdev)
 				DEV_IOCTL_1_PARAMS(l_heartbeat_dev , HEARTBEAT_API_GET_CPU_USAGE , &cpu_usage );
 				cpu_usage_int_part = cpu_usage / 1000;
 				cpu_usage_res_part = cpu_usage - cpu_usage_int_part;
-				//PRINTF_DBG("cpu usage = %d.%03d%% \n\r", cpu_usage_int_part , cpu_usage_res_part);
-				PRINTF_DBG("max_out = %f\n\r",g_max_out_val);
+				PRINTF_DBG("cpu usage = %d.%03d%% \n\r", cpu_usage_int_part , cpu_usage_res_part);
+
+				DSP_IOCTL_1_PARAMS(&app_I2S_mixer , IOCTL_I2S_MIXER_GET_MAX_OUTPUT_VALUE , &max_out_val );
+				PRINTF_DBG("max_out = %f\n\r",max_out_val);
 //				DEV_IOCTL(&compressor_limiter, IOCTL_COMPRESSOR_GET_HIT_COUNTER ,&limiter_hits);
 //				PRINTF_DBG("limiter = %d  \n", limiter_hits );
 			}

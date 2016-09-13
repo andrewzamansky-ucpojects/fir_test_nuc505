@@ -416,8 +416,8 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 			dsp_management_api_set_module_control(&vb , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
 			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
-			dsp_management_api_set_module_control(&vb_final_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_MUTE);
-			dsp_management_api_set_module_control(&lpf_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
+//			dsp_management_api_set_module_control(&vb_final_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_MUTE);
+//			dsp_management_api_set_module_control(&lpf_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
 
 			/**************   LPF path  *************/
@@ -460,7 +460,7 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 
 #if 1// look_ahead_compressor
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , COMPRESSOR_API_TYPE_LOOKAHEAD );
-			threshold=0.95;
+			threshold = 0.99999;
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LOOK_AHEAD_SIZE , LATENCY_LENGTH );
 #else
@@ -477,7 +477,7 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RATIO , &ratio );
 			}
 #endif
-			dsp_management_api_set_module_control(&compressor_limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
+//			dsp_management_api_set_module_control(&compressor_limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
 			app_dev_set_cuttof();
 
