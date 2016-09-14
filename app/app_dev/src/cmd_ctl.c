@@ -118,7 +118,7 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			dsp_management_api_set_module_control(&hpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_ON);
 		}
 	}
-	else if(0 == strcmp(argv[1],"compressor"))
+	else if(0 == strcmp(argv[1],"limiter"))
 	{
 		if(0 == val)
 		{

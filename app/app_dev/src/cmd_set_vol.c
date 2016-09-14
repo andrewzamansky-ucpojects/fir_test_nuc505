@@ -13,9 +13,10 @@
 
 #include "dsp_management_api.h"
 #include "I2S_mixer_api.h"
+#include "I2S_nuc505_api.h"
 #include "os_wrapper.h"
 
-extern dsp_descriptor_t app_I2S_mixer;
+extern pdev_descriptor_t i2s_dev;
 extern os_mutex_t  control_mutex;
 
 /*
@@ -31,7 +32,8 @@ extern os_mutex_t  control_mutex;
 int do_set_vol (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
-	float volume  ;
+	int volume  ;
+	int8_t int8_volume  ;
 
 	if(argc < 2)
 	{
@@ -40,11 +42,17 @@ int do_set_vol (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 
-	volume  = (float)atof(argv[1]);
+	volume  = (int)atof(argv[1]);
 
+	if( (volume < -60) || (volume > 0))
+	{
+		SHELL_REPLY_STR("volume should be in [0..-60]  db n");
+		return 1;
+	}
 	os_mutex_take_infinite_wait(control_mutex);
 
-	DSP_IOCTL_1_PARAMS(&app_I2S_mixer , IOCTL_I2S_MIXER_SET_OUT_LEVEL , &volume  );
+	int8_volume = volume ;
+	DEV_IOCTL_1_PARAMS(i2s_dev , I2S_SET_OUT_VOLUME_LEVEL_DB ,&int8_volume);
 
 	os_mutex_give(control_mutex);
 
@@ -53,6 +61,6 @@ int do_set_vol (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 U_BOOT_CMD(
 	set_vol,     255,	0,	do_set_vol,
-	"set_vol",
+	"set_vol volume",
 	"info   - \n"
 );
