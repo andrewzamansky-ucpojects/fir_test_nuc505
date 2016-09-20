@@ -459,7 +459,7 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 
 
 #if 1// look_ahead_compressor
-			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , COMPRESSOR_API_TYPE_LOOKAHEAD );
+			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , COMPRESSOR_API_TYPE_LIMITER );
 			threshold = 0.99999;
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LOOK_AHEAD_SIZE , LATENCY_LENGTH );

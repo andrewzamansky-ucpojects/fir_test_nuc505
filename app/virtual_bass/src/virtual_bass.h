@@ -21,7 +21,7 @@
 typedef struct
 {
 	float envelope_folower;
-
+	float harmonic_out;
 } VIRTUAL_BASS_Instance_t;
 
 

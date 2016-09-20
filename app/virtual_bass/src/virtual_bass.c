@@ -31,6 +31,12 @@
 #include "gpio_api.h"
 
 /********  defines *********************/
+#define ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT	1.0f
+
+#define HU1_A	0.20625
+#define HU1_B	0.275f
+#define HU1_A_ADJUSTED	(HU1_A  / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
+#define HU1_B_ADJUSTED	(HU1_B / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
 
 
 /********  types  *********************/
@@ -109,6 +115,12 @@ float log2f_approx(float X)
 #define RATIO			0.2f
 float vb_volume = 0.3315;
 float volatile mon ;
+
+#if 0
+void *pBiquadFilterFirstHPF   ;
+BandCoeffs_t *pCoeffsFirstHPF;
+#endif
+
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        virtual_bass_dsp                                                                          */
 /*                                                                                                         */
@@ -128,6 +140,7 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 	float *apCh1Out  ;
 	float curr_ratio ;
 	VIRTUAL_BASS_Instance_t *handle;
+	float harmonic_out;
 
 
 
@@ -137,6 +150,7 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 
 	handle = apdsp->handle;
 	envelope_folower = handle->envelope_folower ;
+	harmonic_out = handle->harmonic_out ;
 
 	apCh1In = in_pads[0]->buff;
 	apCh1Out = out_pads[0].buff;
@@ -156,6 +170,20 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 		curr_x = *apCh1In++;
 
 		mon = curr_x;
+#if 0
+		if(curr_x < harmonic_out  )
+		{
+			tmp = HU1_B_ADJUSTED;
+		}
+		else
+		{
+			tmp = HU1_A_ADJUSTED;
+		}
+		harmonic_out = (1-tmp)*harmonic_out;
+		tmp *=  curr_x ;
+		harmonic_out += tmp ;
+#endif
+
 		// calculate 20*log(x) - convert to dB
 		curr_x_log = log2f_approx(curr_x);
 		curr_x_log *= LOG_COEFF;
@@ -207,7 +235,7 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 	}
 
 
-
+	handle->harmonic_out = harmonic_out ;
 	handle->envelope_folower =envelope_folower ;
 
 }
@@ -235,7 +263,18 @@ uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , voi
 
 		case IOCTL_DSP_INIT :
 			handle->envelope_folower = 0 ;
-
+#if 0
+			pCoeffsFirstHPF=(BandCoeffs_t *)malloc(sizeof(BandCoeffs_t) * 2);
+			pBiquadFilterFirstHPF = biquads_alloc(2 , (float *)pCoeffsFirstHPF );
+			biquads_calculation(
+					BIQUADS_HIGHPASS_MODE_2_POLES,
+					100,
+					p_band_set_params->QValue,
+					p_band_set_params->Gain,
+					48000,
+					(float*)pCoeffs[0]
+					);
+#endif
 			break;
 
 		default :

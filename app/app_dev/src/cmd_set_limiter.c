@@ -31,22 +31,32 @@ extern os_mutex_t  control_mutex;
 int do_set_limiter (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
-	uint32_t chunk_size ;
-	float release ;
+	float f_val ;
+	size_t i_val ;
 
-	if(argc < 3)
+	if(argc < 5)
 	{
 		SHELL_REPLY_STR("syntax err\n");
 		return 1;
 	}
 	os_mutex_take_infinite_wait(control_mutex);
 
-	chunk_size =  atoi(argv[1]);
-	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LOOK_AHEAD_SIZE , (void*)chunk_size );
+	i_val = atoi(argv[1]);
+	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , (void*)i_val );
+
+	f_val = (float)atof(argv[2]);
+	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &f_val );
+
+	f_val = (float)atof(argv[3]);
+	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RATIO , &f_val );
+
+	f_val = (float)atof(argv[4]);
+	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_ATTACK , &f_val );
+
+	f_val = (float)atof(argv[5]);
+	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RELEASE , &f_val );
 
 
-	release = (float)atof(argv[2]);
-	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RELEASE , &release );
 	os_mutex_give(control_mutex);
 
 	return 0;
@@ -54,6 +64,6 @@ int do_set_limiter (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 U_BOOT_CMD(
 	set_limiter,     255,	0,	do_set_limiter,
-	"set_limiter chunk_size release",
+	"set_limiter type[0-lim,1-compr,2-compr_look_ahead] threshold[0..1] ratio[1..1000] attack[1..1000] release[1..1000]",
 	"info   - \n"
 );
