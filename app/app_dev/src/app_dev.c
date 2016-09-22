@@ -248,8 +248,8 @@ static uint8_t app_dev_create_signal_flow()
 	DSP_CREATE_LINK(&lpf_filter,DSP_OUTPUT_PAD_0,&vb,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , VIRTUAL_BASS_API_MODULE_NAME , &vb);
 
-	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&vb_final_filter,DSP_INPUT_PAD_0);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &vb_final_filter);
+//	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&vb_final_filter,DSP_INPUT_PAD_0);
+//	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &vb_final_filter);
 	/******* end of VB   *********/
 
 	/********* end of LF path    **********/
@@ -269,11 +269,11 @@ static uint8_t app_dev_create_signal_flow()
 	/********* end of HF path  *********/
 
 	/********** collecting LF and HF pathes together with phase change on HF *********/
-	DSP_CREATE_LINK(&vb_final_filter,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_0);
+	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&voice_3d,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &adder_bass_with_left_channel);
 
-	DSP_CREATE_LINK(&vb_final_filter,DSP_OUTPUT_PAD_0,&adder_bass_with_right_channel,DSP_INPUT_PAD_0);
+	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&adder_bass_with_right_channel,DSP_INPUT_PAD_0);
 	DSP_CREATE_LINK(&voice_3d,DSP_OUTPUT_PAD_1,&adder_bass_with_right_channel,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &adder_bass_with_right_channel);
 
@@ -318,6 +318,7 @@ uint8_t app_dev_set_cuttof()
 {
 	equalizer_api_band_set_t band_set;
 	equalizer_api_band_set_params_t  *p_band_set_params;
+	float freq;
 
 	p_band_set_params = &band_set.band_set_params;
 
@@ -325,11 +326,8 @@ uint8_t app_dev_set_cuttof()
 
 	p_band_set_params->Fc = cutoff_freq;
 	p_band_set_params->QValue = 1;//0.836;//0.707;
-	p_band_set_params->filter_mode = BIQUADS_BANDPASS_MODE;
+	p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_1_POLE;
 	band_set.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	p_band_set_params->filter_mode = BIQUADS_BANDPASS_MODE;
-	band_set.band_num = 1;
 	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
 
 	p_band_set_params->Fc = cutoff_freq;
@@ -337,31 +335,31 @@ uint8_t app_dev_set_cuttof()
 	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
 	band_set.band_num = 0;
 	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&hpf_filter_right, IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
 	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
 	band_set.band_num = 1;
 	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-
-	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	band_set.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	band_set.band_num = 1;
 	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
 
-	p_band_set_params->QValue = 1;//0.836;//0.707;
-	p_band_set_params->Gain = 1;
-	p_band_set_params->Fc = cutoff_freq * 3.4;
-	p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
-	band_set.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	p_band_set_params->Fc = cutoff_freq * 0.2;
-	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
-	band_set.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	p_band_set_params->QValue = 1;//0.836;//0.707;
-	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
-	band_set.band_num = 2;
-	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+
+	freq = 100;
+	DSP_IOCTL_1_PARAMS(&vb , IOCTL_VIRTUAL_BASS_SET_FIRST_HPF, &cutoff_freq  );
+	DSP_IOCTL_1_PARAMS(&vb , IOCTL_VIRTUAL_BASS_SET_SECOND_HPF, &freq);
+
+//	p_band_set_params->QValue = 1;//0.836;//0.707;
+//	p_band_set_params->Gain = 1;
+//	p_band_set_params->Fc = cutoff_freq * 3.4;
+//	p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
+//	band_set.band_num = 0;
+//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+//	p_band_set_params->Fc = cutoff_freq * 0.2;
+//	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
+//	band_set.band_num = 1;
+//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+//	p_band_set_params->QValue = 1;//0.836;//0.707;
+//	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+//	band_set.band_num = 2;
+//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
 
 
 	return 0;
@@ -411,16 +409,16 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 			ch_weight.weight = 0.5;
 			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
 
-			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 2 );
+			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 1 );
 
 			dsp_management_api_set_module_control(&vb , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
-			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
+//			DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
 //			dsp_management_api_set_module_control(&vb_final_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_MUTE);
 //			dsp_management_api_set_module_control(&lpf_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
 
-			/**************   LPF path  *************/
+			/**************   HPF path  *************/
 			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 2 );
 			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 2 );
 //			dsp_management_api_set_module_control(&hpf_filter_left , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
@@ -435,20 +433,14 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 
 			/**************  final mixed LPF+HPF path  *************/
 			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_NUM_OF_CHANNELS , 2 );
-			ch_weight.channel_num = 0;
-			ch_weight.weight = 1;
-			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-			ch_weight.channel_num = 1;
-			ch_weight.weight = 1;
-			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
-
-
 			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_NUM_OF_CHANNELS , 2 );
 			ch_weight.channel_num = 0;
 			ch_weight.weight = 1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
 			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
 			ch_weight.channel_num = 1;
-			ch_weight.weight = 1;
+			ch_weight.weight = -1;
+			DSP_IOCTL_1_PARAMS(&adder_bass_with_left_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
 			DSP_IOCTL_1_PARAMS(&adder_bass_with_right_channel , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
 
 
@@ -460,7 +452,7 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 
 #if 1// look_ahead_compressor
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , COMPRESSOR_API_TYPE_LIMITER );
-			threshold = 0.99999;
+			threshold = 0.9999;
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
 			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LOOK_AHEAD_SIZE , LATENCY_LENGTH );
 #else

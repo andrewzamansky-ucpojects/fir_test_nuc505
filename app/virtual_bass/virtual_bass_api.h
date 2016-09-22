@@ -12,6 +12,11 @@
 /**********  define API  types ************/
 
 
+typedef enum
+{
+	IOCTL_VIRTUAL_BASS_SET_FIRST_HPF = IOCTL_DSP_LAST_COMMON_IOCTL+1,
+	IOCTL_VIRTUAL_BASS_SET_SECOND_HPF
+}VIRTUAL_BASS_API_ioctl_t;
 
 
 

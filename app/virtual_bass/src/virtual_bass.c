@@ -29,14 +29,15 @@
 
 #define DEBUG
 #include "gpio_api.h"
+#include "equalizer_api.h"
 
 /********  defines *********************/
 #define ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT	1.0f
 
-#define HU1_A	0.20625
-#define HU1_B	0.275f
-#define HU1_A_ADJUSTED	(HU1_A  / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
-#define HU1_B_ADJUSTED	(HU1_B / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
+#define HU1_A	1.0f
+#define HU1_B	0.03f
+#define HU1_A_ADJUSTED	HU1_A //(HU1_A  / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
+#define HU1_B_ADJUSTED	HU1_B //(HU1_B / ENVELOP_FOLLOWER_SAMPLE_RATE_FLOAT)
 
 
 /********  types  *********************/
@@ -106,21 +107,25 @@ float log2f_approx(float X)
 
 
 #define LOG_COEFF	(20.0f/3.321928095f)
-#define THRESHOLD	-65.0f
+#define THRESHOLD	0.001778f
 
-#define COMPR_ATTACK  	0.999896f
+#define COMPR_ATTACK  	0.3875f
 #define ONE_MINUS_COMPR_ATTACK  	(1.0f - COMPR_ATTACK)
-#define COMPR_REALESE	0.900842f
+#define COMPR_REALESE	0.2f
 #define  ONE_MINUS_COMPR_REALESE	(1.0f - COMPR_REALESE)
-#define RATIO			0.2f
-float vb_volume = 0.3315;
+#define RATIO			3.2f
+float vb_volume = 20;
 float volatile mon ;
 
-#if 0
-void *pBiquadFilterFirstHPF   ;
-BandCoeffs_t *pCoeffsFirstHPF;
-#endif
+dsp_descriptor_t first_source;
+dsp_descriptor_t first_filter;
+static dsp_chain_t *first_dsp_chain;
 
+dsp_descriptor_t second_source;
+dsp_descriptor_t second_filter;
+static dsp_chain_t *second_dsp_chain;
+
+float tmp_buff[I2S_BUFF_LEN];
 /*---------------------------------------------------------------------------------------------------------*/
 /* Function:        virtual_bass_dsp                                                                          */
 /*                                                                                                         */
@@ -136,17 +141,18 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 		dsp_pad_t *in_pads[MAX_NUM_OF_OUTPUT_PADS] , dsp_pad_t out_pads[MAX_NUM_OF_OUTPUT_PADS])
 {
 
-	float *apCh1In ;
-	float *apCh1Out  ;
-	float curr_ratio ;
+	volatile float *apCh1In ;
+	volatile float *apCh1Out  ;
+	volatile float curr_ratio ;
 	VIRTUAL_BASS_Instance_t *handle;
-	float harmonic_out;
-
-
+	volatile float harmonic_out;
+	volatile float *tmp_in_buf;
+	volatile float *tmp_out_buf;
+	uint16_t i;
 
 //	uint8_t envelope_folower_sample_count =ENVELOP_FOLLOWER_SAMPLE_RATE;
-	float envelope_folower;
-	float curr_y,curr_x , curr_x_log; // curr_x_log is in dB.
+	volatile float envelope_folower;
+	volatile float curr_y,curr_x;
 
 	handle = apdsp->handle;
 	envelope_folower = handle->envelope_folower ;
@@ -156,21 +162,14 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 	apCh1Out = out_pads[0].buff;
 
 
-
-
-
-//	arm_scale_f32(apCh1In , (-2.2f) , apCh1Out , data_len);
-//	arm_abs_f32( apCh1In , apCh1Out , data_len);
-
-	while(data_len--)
+#if 1
+	tmp_in_buf = apCh1In;
+	tmp_out_buf = tmp_buff;
+	for(i = 0 ; i < data_len ; i++)
 	{
-		float delta , tmp ;
+		float	tmp ;
+		curr_x = *tmp_in_buf++;
 
-
-		curr_x = *apCh1In++;
-
-		mon = curr_x;
-#if 0
 		if(curr_x < harmonic_out  )
 		{
 			tmp = HU1_B_ADJUSTED;
@@ -179,21 +178,48 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 		{
 			tmp = HU1_A_ADJUSTED;
 		}
-		harmonic_out = (1-tmp)*harmonic_out;
+		harmonic_out *= (1.0f-tmp);
 		tmp *=  curr_x ;
 		harmonic_out += tmp ;
+		*tmp_out_buf++ = harmonic_out ;//+ curr_x;
+	}
+#else
+	memcpy(tmp_buff , apCh1In ,data_len * sizeof(float) );
 #endif
 
-		// calculate 20*log(x) - convert to dB
-		curr_x_log = log2f_approx(curr_x);
-		curr_x_log *= LOG_COEFF;
-		mon = curr_x_log;
-		delta = 0;
-		if(curr_x_log > THRESHOLD)
+#if 1
+	DSP_SET_SOURCE_BUFFER(&first_source,DSP_INPUT_PAD_0,tmp_buff );
+	DSP_SET_SINK_BUFFER(&first_filter,DSP_OUTPUT_PAD_0,apCh1Out );// to save memory put harmonics temporary in  apCh1Out
+	DSP_PROCESS_CHAIN(first_dsp_chain , data_len );
+#else
+	memcpy(apCh1Out , tmp_buff ,data_len * sizeof(float) );
+#endif
+
+#if 1
+
+#if 1
+	tmp_in_buf = apCh1Out;
+	tmp_out_buf = tmp_buff;
+	for(i = 0 ; i < data_len ; i++)
+	{
+		volatile float delta ;
+		volatile float tmp ;
+		volatile float curr_x_abs;
+
+
+		curr_x = *tmp_in_buf++;
+#if 1
+
+		curr_x_abs = fabsf(curr_x);
+//		mon = curr_x;
+
+
+		delta = 1;
+		if(curr_x_abs > THRESHOLD)
 		{
-			delta = curr_x_log - THRESHOLD; // delta = in dB, how much we crossed the threshold
+			delta = THRESHOLD / curr_x_abs;
 		}
-		mon = delta;
+//		mon = delta;
 
 		if(delta > envelope_folower)
 		{
@@ -206,35 +232,49 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 			tmp = delta * ONE_MINUS_COMPR_REALESE ;
 		}
 		envelope_folower += tmp ;
-		mon = envelope_folower;
 
 
-		tmp = delta / (-160.0f); // to change sign for log2lin
-		tmp += RATIO ;
-		tmp *= envelope_folower ;
-		mon = tmp;
+//		mon = envelope_folower;
 
-
-		if(curr_x > 0)
+#if 0
+		tmp = delta /2;
+		tmp = RATIO - tmp;
+#else
+		tmp = RATIO;
+#endif
+		if(0==tmp)
 		{
-			tmp *= 1.2f ;
+			while(1);
 		}
-		else
+		tmp = 1/tmp;
+
+		if(0==envelope_folower)
 		{
-			tmp *= 0.8f ;
-		}
-		mon = tmp;
+			while(1);
+		}	//	mon = tmp;
+		envelope_folower = 1 / envelope_folower;
 
-		tmp /= 20;
-		curr_ratio = fast_pow(10 , tmp); // translate from dB to linear ratio
-		mon = curr_ratio;
 
+		curr_ratio = fast_pow(envelope_folower , tmp);
+//		mon = curr_ratio;
+#else
+		curr_ratio = 1;
+#endif
 		curr_y = curr_x * curr_ratio;
 		curr_y *= vb_volume;
-		*apCh1Out++ = curr_y;
+		*tmp_out_buf++ = curr_y;
 	}
+#else
+	memcpy(tmp_buff , apCh1Out ,data_len * sizeof(float) );
+#endif
+	DSP_SET_SOURCE_BUFFER(&second_source,DSP_INPUT_PAD_0,tmp_buff );
+	DSP_SET_SINK_BUFFER(&second_filter,DSP_OUTPUT_PAD_0,apCh1Out );
+	DSP_PROCESS_CHAIN(second_dsp_chain , data_len );
 
+#else
+	//memcpy(apCh1Out ,tmp_buff  ,data_len * sizeof(float) );
 
+#endif
 	handle->harmonic_out = harmonic_out ;
 	handle->envelope_folower =envelope_folower ;
 
@@ -257,25 +297,74 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , void * aIoctl_param1 , void * aIoctl_param2)
 {
 	VIRTUAL_BASS_Instance_t *handle = apdsp->handle;;
+	equalizer_api_band_set_t band_set;
+	equalizer_api_band_set_params_t  *p_band_set_params;
+	float freq;
+	p_band_set_params = &band_set.band_set_params;
+
+	p_band_set_params->Gain = 1;
 
 	switch(aIoctl_num)
 	{
 
 		case IOCTL_DSP_INIT :
-			handle->envelope_folower = 0 ;
-#if 0
-			pCoeffsFirstHPF=(BandCoeffs_t *)malloc(sizeof(BandCoeffs_t) * 2);
-			pBiquadFilterFirstHPF = biquads_alloc(2 , (float *)pCoeffsFirstHPF );
-			biquads_calculation(
-					BIQUADS_HIGHPASS_MODE_2_POLES,
-					100,
-					p_band_set_params->QValue,
-					p_band_set_params->Gain,
-					48000,
-					(float*)pCoeffs[0]
-					);
-#endif
+
+			handle->envelope_folower = 1 ;
+			handle->harmonic_out = 0 ;
+
+			/*  first dsp chain*/
+			first_dsp_chain = DSP_CREATE_CHAIN(2);
+			DSP_CREATE_LINK(&first_source,DSP_OUTPUT_PAD_0,&first_filter,DSP_INPUT_PAD_0);
+			DSP_ADD_MODULE_TO_CHAIN(first_dsp_chain , EQUALIZER_API_MODULE_NAME ,&first_filter );
+
+			DSP_IOCTL_1_PARAMS(&first_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
+
+			/*  second dsp chain*/
+			second_dsp_chain = DSP_CREATE_CHAIN(2);
+			DSP_CREATE_LINK(&second_source,DSP_OUTPUT_PAD_0,&second_filter,DSP_INPUT_PAD_0);
+			DSP_ADD_MODULE_TO_CHAIN(second_dsp_chain , EQUALIZER_API_MODULE_NAME ,&second_filter );
+
+			DSP_IOCTL_1_PARAMS(&second_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
+
 			break;
+
+		case IOCTL_VIRTUAL_BASS_SET_FIRST_HPF :
+			freq = *(float*)aIoctl_param1;
+			p_band_set_params->QValue = 0.707;//0.836;//0.707;
+			p_band_set_params->Gain = 1;
+			p_band_set_params->Fc = 10;
+			p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+			band_set.band_num = 0;
+			DSP_IOCTL_1_PARAMS(&first_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+			p_band_set_params->QValue = 0.707;//0.836;//0.707;
+			p_band_set_params->Fc = freq;
+			p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+			band_set.band_num = 1;
+			DSP_IOCTL_1_PARAMS(&first_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+			band_set.band_num = 2;
+			DSP_IOCTL_1_PARAMS(&first_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+
+			p_band_set_params->QValue = 0.8;//0.836;//0.707;
+			p_band_set_params->Gain = 1;
+			p_band_set_params->Fc = freq;
+			p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
+			band_set.band_num = 0;
+			DSP_IOCTL_1_PARAMS(&second_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+
+			break ;
+
+		case IOCTL_VIRTUAL_BASS_SET_SECOND_HPF :
+			freq = *(float*)aIoctl_param1;
+			p_band_set_params->Gain = 1;
+			p_band_set_params->QValue = 0.8;//0.836;//0.707;
+			p_band_set_params->Fc = freq;
+			p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
+			band_set.band_num = 1;
+			DSP_IOCTL_1_PARAMS(&second_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+			band_set.band_num = 2;
+			DSP_IOCTL_1_PARAMS(&second_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+
+			break ;
 
 		default :
 			return 1;
