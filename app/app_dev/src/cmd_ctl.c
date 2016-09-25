@@ -21,7 +21,7 @@ extern dsp_descriptor_t hpf_filter_left;
 extern dsp_descriptor_t hpf_filter_right;
 
 extern dsp_descriptor_t stereo_to_mono;
-extern dsp_descriptor_t compressor_limiter;
+extern dsp_descriptor_t limiter;
 extern dsp_descriptor_t voice_3d;
 
 extern uint8_t loopback ;
@@ -122,11 +122,11 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	{
 		if(0 == val)
 		{
-			dsp_management_api_set_module_control(&compressor_limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
+			dsp_management_api_set_module_control(&limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 		}
 		else
 		{
-			dsp_management_api_set_module_control(&compressor_limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_ON);
+			dsp_management_api_set_module_control(&limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_ON);
 		}
 	}
 	else if(0 == strcmp(argv[1],"3d"))

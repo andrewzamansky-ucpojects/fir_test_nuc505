@@ -26,7 +26,8 @@
 #include "dsp_management_api.h"
 #include "equalizer_api.h"
 #include "mixer_api.h"
-#include "compressor_api.h"
+#include "lookahead_compressor_api.h"
+#include "standard_compressor_api.h"
 #include "virtual_bass_api.h"
 #include "voice_3D_api.h"
 #include "I2S_nuc505_api.h"
@@ -92,10 +93,12 @@ dsp_descriptor_t hpf_filter_right;
 
 dsp_descriptor_t voice_3d;
 
+dsp_descriptor_t compressor_hf;
+
 dsp_descriptor_t leftChanelEQ;
 dsp_descriptor_t rightChanelEQ;
 
-dsp_descriptor_t compressor_limiter;
+dsp_descriptor_t limiter;
 
 dsp_descriptor_t stereo_to_mono;
 dsp_descriptor_t adder_bass_with_left_channel;
@@ -211,13 +214,13 @@ static uint8_t app_dev_create_signal_flow()
 	/*
                                           -> hpf_filter_left  ->                              ------>     => adder_bass_with_left_channel -> leftChanelEQ --
                                         /                       \                            /          /                                                     \
-                                       /                          => voice_3d   ===========>           /                                                        => compressor_limiter => app_I2S_mixer
+                                       /                          => voice_3d   ===========>           /                                                        => limiter => app_I2S_mixer
                                       /                         /                            \        /                                                       /
                                         -> hpf_filter_right ->                                ------>/ => adder_bass_with_right_channel  -> rightChanelEQ  --
                                     /                                                               /
         source ->  app_I2S_spliter                                                                 /
                                    \                                                              /
-                                     => stereo_to_mono -> lpf_filter -> vb -> vb_final_filter -> /
+                                     => stereo_to_mono -> lpf_filter -> virtual_bass ---------> /
 
 	 */
 
@@ -256,15 +259,19 @@ static uint8_t app_dev_create_signal_flow()
 	DSP_CREATE_INTER_MODULES_LINK(&hpf_filter_right,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , VOICE_3D_API_MODULE_NAME , &voice_3d);
 
+	DSP_CREATE_INTER_MODULES_LINK(&voice_3d,DSP_OUTPUT_PAD_0,&compressor_hf,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&voice_3d,DSP_OUTPUT_PAD_1,&compressor_hf,DSP_INPUT_PAD_1);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , STANDARD_COMPRESSOR_API_MODULE_NAME , &compressor_hf);
+
 	/********* end of HF path  *********/
 
 	/********** collecting LF and HF pathes together with phase change on HF *********/
 	DSP_CREATE_INTER_MODULES_LINK(&vb,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_0);
-	DSP_CREATE_INTER_MODULES_LINK(&voice_3d,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&compressor_hf,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &adder_bass_with_left_channel);
 
 	DSP_CREATE_INTER_MODULES_LINK(&vb,DSP_OUTPUT_PAD_0,&adder_bass_with_right_channel,DSP_INPUT_PAD_0);
-	DSP_CREATE_INTER_MODULES_LINK(&voice_3d,DSP_OUTPUT_PAD_1,&adder_bass_with_right_channel,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&compressor_hf,DSP_OUTPUT_PAD_1,&adder_bass_with_right_channel,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &adder_bass_with_right_channel);
 
 	/********** end of collecting LF and HF pathes together  *********/
@@ -277,15 +284,15 @@ static uint8_t app_dev_create_signal_flow()
 	DSP_CREATE_INTER_MODULES_LINK(&adder_bass_with_right_channel,DSP_OUTPUT_PAD_0,&rightChanelEQ,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &rightChanelEQ);
 
-	DSP_CREATE_INTER_MODULES_LINK(&leftChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_0);
-	DSP_CREATE_INTER_MODULES_LINK(&rightChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_1);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , COMPRESSOR_API_MODULE_NAME , &compressor_limiter);
+	DSP_CREATE_INTER_MODULES_LINK(&leftChanelEQ,DSP_OUTPUT_PAD_0,&limiter,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&rightChanelEQ,DSP_OUTPUT_PAD_0,&limiter,DSP_INPUT_PAD_1);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , LOOKAHEAD_COMPRESSOR_API_MODULE_NAME , &limiter);
 
 	/********** end ofEQ+Compressor  *********/
 
 	/********** mix 2 channels to I2S bus  *********/
-	DSP_CREATE_INTER_MODULES_LINK(&compressor_limiter,DSP_OUTPUT_PAD_0,&app_I2S_mixer,DSP_INPUT_PAD_0);
-	DSP_CREATE_INTER_MODULES_LINK(&compressor_limiter,DSP_OUTPUT_PAD_1,&app_I2S_mixer,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&limiter,DSP_OUTPUT_PAD_0,&app_I2S_mixer,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&limiter,DSP_OUTPUT_PAD_1,&app_I2S_mixer,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , I2S_MIXER_API_MODULE_NAME , &app_I2S_mixer);
 
 	DSP_CREATE_MODULE_TO_CHAIN_OUTPUT_LINK(pMain_dsp_chain, DSP_OUTPUT_PAD_0, &app_I2S_mixer, DSP_OUTPUT_PAD_0);
@@ -441,26 +448,11 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 			DSP_IOCTL_1_PARAMS(&rightChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 7);
 
 
-#if 1// look_ahead_compressor
-			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , COMPRESSOR_API_TYPE_LIMITER );
+			DSP_IOCTL_1_PARAMS(&limiter , IOCTL_LOOKAHEAD_COMPRESSOR_SET_TYPE , LOOKAHEAD_COMPRESSOR_API_TYPE_LIMITER);
 			threshold = 0.9999;
-			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
-			DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_LOOK_AHEAD_SIZE , LATENCY_LENGTH );
-#else
-			{
-				float attack,release,ratio;
-				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , COMPRESSOR_API_TYPE_REGULAR );
-				threshold=0.125;
-				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
-				attack = 0.5;
-				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_ATTACK , &attack );
-				release = 0.5;
-				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RELEASE , &release );
-				ratio = 2;//[1,inf]
-				DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RATIO , &ratio );
-			}
-#endif
-//			dsp_management_api_set_module_control(&compressor_limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
+			DSP_IOCTL_1_PARAMS(&limiter , IOCTL_LOOKAHEAD_COMPRESSOR_SET_HIGH_THRESHOLD , &threshold );
+			DSP_IOCTL_1_PARAMS(&limiter , IOCTL_LOOKAHEAD_COMPRESSOR_SET_LOOK_AHEAD_SIZE , LATENCY_LENGTH );
+//			dsp_management_api_set_module_control(&limiter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
 			app_dev_set_cuttof();
 

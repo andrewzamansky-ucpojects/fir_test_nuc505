@@ -12,10 +12,10 @@
 #include "shell_api.h"
 
 #include "dsp_management_api.h"
-#include "compressor_api.h"
+#include "lookahead_compressor_api.h"
 #include "os_wrapper.h"
 
-extern dsp_descriptor_t compressor_limiter;
+extern dsp_descriptor_t limiter;
 extern os_mutex_t  control_mutex;
 
 /*
@@ -42,19 +42,19 @@ int do_set_limiter (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	os_mutex_take_infinite_wait(control_mutex);
 
 	i_val = atoi(argv[1]);
-	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_TYPE , (void*)i_val );
+	DSP_IOCTL_1_PARAMS(&limiter , IOCTL_LOOKAHEAD_COMPRESSOR_SET_TYPE , (void*)i_val );
 
 	f_val = (float)atof(argv[2]);
-	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_HIGH_THRESHOLD , &f_val );
+	DSP_IOCTL_1_PARAMS(&limiter , IOCTL_LOOKAHEAD_COMPRESSOR_SET_HIGH_THRESHOLD , &f_val );
 
 	f_val = (float)atof(argv[3]);
-	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RATIO , &f_val );
+	DSP_IOCTL_1_PARAMS(&limiter , IOCTL_LOOKAHEAD_COMPRESSOR_SET_RATIO , &f_val );
 
 	f_val = (float)atof(argv[4]);
-	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_ATTACK , &f_val );
+	DSP_IOCTL_1_PARAMS(&limiter , IOCTL_LOOKAHEAD_COMPRESSOR_SET_ATTACK , &f_val );
 
 	f_val = (float)atof(argv[5]);
-	DSP_IOCTL_1_PARAMS(&compressor_limiter , IOCTL_COMPRESSOR_SET_RELEASE , &f_val );
+	DSP_IOCTL_1_PARAMS(&limiter , IOCTL_LOOKAHEAD_COMPRESSOR_SET_RELEASE , &f_val );
 
 
 	os_mutex_give(control_mutex);
@@ -64,6 +64,6 @@ int do_set_limiter (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 U_BOOT_CMD(
 	set_limiter,     255,	0,	do_set_limiter,
-	"set_limiter type[0-lim,1-compr,2-compr_look_ahead] threshold[0..1] ratio[1..1000] attack[1..1000] release[1..1000]",
+	"set_limiter type[0-lim,1-compr] threshold[0..1] ratio[1..1000] attack[1..1000] release[1..1000]",
 	"info   - \n"
 );
