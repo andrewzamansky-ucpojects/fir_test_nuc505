@@ -117,11 +117,9 @@ float log2f_approx(float X)
 float vb_volume = 20;
 float volatile mon ;
 
-dsp_descriptor_t first_source;
 dsp_descriptor_t first_filter;
 static dsp_chain_t *first_dsp_chain;
 
-dsp_descriptor_t second_source;
 dsp_descriptor_t second_filter;
 static dsp_chain_t *second_dsp_chain;
 
@@ -188,8 +186,8 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 #endif
 
 #if 1
-	DSP_SET_SOURCE_BUFFER(&first_source,DSP_INPUT_PAD_0,tmp_buff );
-	DSP_SET_SINK_BUFFER(&first_filter,DSP_OUTPUT_PAD_0,apCh1Out );// to save memory put harmonics temporary in  apCh1Out
+	DSP_SET_CHAIN_INPUT_BUFFER(first_dsp_chain,DSP_INPUT_PAD_0,tmp_buff );
+	DSP_SET_CHAIN_OUTPUT_BUFFER(first_dsp_chain, DSP_OUTPUT_PAD_0, apCh1Out );// to save memory put harmonics temporary in  apCh1Out
 	DSP_PROCESS_CHAIN(first_dsp_chain , data_len );
 #else
 	memcpy(apCh1Out , tmp_buff ,data_len * sizeof(float) );
@@ -267,8 +265,8 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 #else
 	memcpy(tmp_buff , apCh1Out ,data_len * sizeof(float) );
 #endif
-	DSP_SET_SOURCE_BUFFER(&second_source,DSP_INPUT_PAD_0,tmp_buff );
-	DSP_SET_SINK_BUFFER(&second_filter,DSP_OUTPUT_PAD_0,apCh1Out );
+	DSP_SET_CHAIN_INPUT_BUFFER(second_dsp_chain,DSP_INPUT_PAD_0,tmp_buff );
+	DSP_SET_CHAIN_OUTPUT_BUFFER(second_dsp_chain, DSP_OUTPUT_PAD_0, apCh1Out );
 	DSP_PROCESS_CHAIN(second_dsp_chain , data_len );
 
 #else
@@ -314,15 +312,17 @@ uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , voi
 
 			/*  first dsp chain*/
 			first_dsp_chain = DSP_CREATE_CHAIN(2);
-			DSP_CREATE_LINK(&first_source,DSP_OUTPUT_PAD_0,&first_filter,DSP_INPUT_PAD_0);
+			DSP_CREATE_CHAIN_INPUT_TO_MODULE_LINK(first_dsp_chain,DSP_INPUT_PAD_0,&first_filter,DSP_INPUT_PAD_0);
 			DSP_ADD_MODULE_TO_CHAIN(first_dsp_chain , EQUALIZER_API_MODULE_NAME ,&first_filter );
+			DSP_CREATE_MODULE_TO_CHAIN_OUTPUT_LINK(first_dsp_chain, DSP_OUTPUT_PAD_0, &first_filter, DSP_OUTPUT_PAD_0);
 
 			DSP_IOCTL_1_PARAMS(&first_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
 
 			/*  second dsp chain*/
 			second_dsp_chain = DSP_CREATE_CHAIN(2);
-			DSP_CREATE_LINK(&second_source,DSP_OUTPUT_PAD_0,&second_filter,DSP_INPUT_PAD_0);
+			DSP_CREATE_CHAIN_INPUT_TO_MODULE_LINK(second_dsp_chain,DSP_INPUT_PAD_0,&second_filter,DSP_INPUT_PAD_0);
 			DSP_ADD_MODULE_TO_CHAIN(second_dsp_chain , EQUALIZER_API_MODULE_NAME ,&second_filter );
+			DSP_CREATE_MODULE_TO_CHAIN_OUTPUT_LINK(second_dsp_chain, DSP_OUTPUT_PAD_0, &second_filter, DSP_OUTPUT_PAD_0);
 
 			DSP_IOCTL_1_PARAMS(&second_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
 

@@ -101,9 +101,6 @@ dsp_descriptor_t stereo_to_mono;
 dsp_descriptor_t adder_bass_with_left_channel;
 dsp_descriptor_t adder_bass_with_right_channel;
 
-dsp_descriptor_t source;
-//static dsp_descriptor_t sink;
-
 
 void *dsp_buffers_pool;
 float cutoff_freq = 100;
@@ -179,25 +176,18 @@ static void main_thread_func (void * aHandle)
 					pTxBuf[2*i + 1] =  pRxBuf[2*i + 1];
 
 				}
-
 			}
 			else
 			{
 				os_mutex_take_infinite_wait(control_mutex);
 
-				DSP_SET_SOURCE_BUFFER(&source,DSP_INPUT_PAD_0,(float*)pRxBuf );
-
-				DSP_SET_SINK_BUFFER(&app_I2S_mixer,DSP_OUTPUT_PAD_0,(float*)pTxBuf );
-
-
+				DSP_SET_CHAIN_INPUT_BUFFER(pMain_dsp_chain, DSP_INPUT_PAD_0, (float*)pRxBuf );
+				DSP_SET_CHAIN_OUTPUT_BUFFER(pMain_dsp_chain, DSP_OUTPUT_PAD_0, (float*)pTxBuf );
 				DSP_PROCESS_CHAIN(pMain_dsp_chain , I2S_BUFF_LEN );
-
 
 				os_mutex_give(control_mutex);
 
 			}//if (1==loopback )
-
-
 		}
 
 		os_stack_test();
@@ -233,22 +223,22 @@ static uint8_t app_dev_create_signal_flow()
 
 	pMain_dsp_chain = DSP_CREATE_CHAIN(16);
 	//******* distribute L-R **********/
-	DSP_CREATE_LINK(&source,DSP_OUTPUT_PAD_0,&app_I2S_spliter,DSP_INPUT_PAD_0);
+	DSP_CREATE_CHAIN_INPUT_TO_MODULE_LINK(pMain_dsp_chain,DSP_INPUT_PAD_0,&app_I2S_spliter,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , I2S_SPLITTER_API_MODULE_NAME ,&app_I2S_spliter );
 
 	/******** LF path **********/
-	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_0,&stereo_to_mono,DSP_INPUT_PAD_0);
-	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_1,&stereo_to_mono,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_0,&stereo_to_mono,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_1,&stereo_to_mono,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &stereo_to_mono);
 
-	DSP_CREATE_LINK(&stereo_to_mono,DSP_OUTPUT_PAD_0,&lpf_filter,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&stereo_to_mono,DSP_OUTPUT_PAD_0,&lpf_filter,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &lpf_filter);
 
 	/********  VB  ************/
-	DSP_CREATE_LINK(&lpf_filter,DSP_OUTPUT_PAD_0,&vb,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&lpf_filter,DSP_OUTPUT_PAD_0,&vb,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , VIRTUAL_BASS_API_MODULE_NAME , &vb);
 
-//	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&vb_final_filter,DSP_INPUT_PAD_0);
+//	DSP_CREATE_INTER_MODULES_LINK(&vb,DSP_OUTPUT_PAD_0,&vb_final_filter,DSP_INPUT_PAD_0);
 //	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &vb_final_filter);
 	/******* end of VB   *********/
 
@@ -257,47 +247,48 @@ static uint8_t app_dev_create_signal_flow()
 
 	/********** HF path *********/
 
-	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_0,&hpf_filter_left,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_0,&hpf_filter_left,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &hpf_filter_left);
-	DSP_CREATE_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_1,&hpf_filter_right,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&app_I2S_spliter,DSP_OUTPUT_PAD_1,&hpf_filter_right,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &hpf_filter_right);
 
-	DSP_CREATE_LINK(&hpf_filter_left,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_0);
-	DSP_CREATE_LINK(&hpf_filter_right,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&hpf_filter_left,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&hpf_filter_right,DSP_OUTPUT_PAD_0,&voice_3d,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , VOICE_3D_API_MODULE_NAME , &voice_3d);
 
 	/********* end of HF path  *********/
 
 	/********** collecting LF and HF pathes together with phase change on HF *********/
-	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_0);
-	DSP_CREATE_LINK(&voice_3d,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&vb,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&voice_3d,DSP_OUTPUT_PAD_0,&adder_bass_with_left_channel,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &adder_bass_with_left_channel);
 
-	DSP_CREATE_LINK(&vb,DSP_OUTPUT_PAD_0,&adder_bass_with_right_channel,DSP_INPUT_PAD_0);
-	DSP_CREATE_LINK(&voice_3d,DSP_OUTPUT_PAD_1,&adder_bass_with_right_channel,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&vb,DSP_OUTPUT_PAD_0,&adder_bass_with_right_channel,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&voice_3d,DSP_OUTPUT_PAD_1,&adder_bass_with_right_channel,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , MIXER_API_MODULE_NAME , &adder_bass_with_right_channel);
 
 	/********** end of collecting LF and HF pathes together  *********/
 
 	/********** EQ+Compressor  *********/
 
-	DSP_CREATE_LINK(&adder_bass_with_left_channel,DSP_OUTPUT_PAD_0,&leftChanelEQ,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&adder_bass_with_left_channel,DSP_OUTPUT_PAD_0,&leftChanelEQ,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &leftChanelEQ);
 
-	DSP_CREATE_LINK(&adder_bass_with_right_channel,DSP_OUTPUT_PAD_0,&rightChanelEQ,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&adder_bass_with_right_channel,DSP_OUTPUT_PAD_0,&rightChanelEQ,DSP_INPUT_PAD_0);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , EQUALIZER_API_MODULE_NAME , &rightChanelEQ);
 
-	DSP_CREATE_LINK(&leftChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_0);
-	DSP_CREATE_LINK(&rightChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&leftChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&rightChanelEQ,DSP_OUTPUT_PAD_0,&compressor_limiter,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , COMPRESSOR_API_MODULE_NAME , &compressor_limiter);
 
 	/********** end ofEQ+Compressor  *********/
 
 	/********** mix 2 channels to I2S bus  *********/
-	DSP_CREATE_LINK(&compressor_limiter,DSP_OUTPUT_PAD_0,&app_I2S_mixer,DSP_INPUT_PAD_0);
-	DSP_CREATE_LINK(&compressor_limiter,DSP_OUTPUT_PAD_1,&app_I2S_mixer,DSP_INPUT_PAD_1);
+	DSP_CREATE_INTER_MODULES_LINK(&compressor_limiter,DSP_OUTPUT_PAD_0,&app_I2S_mixer,DSP_INPUT_PAD_0);
+	DSP_CREATE_INTER_MODULES_LINK(&compressor_limiter,DSP_OUTPUT_PAD_1,&app_I2S_mixer,DSP_INPUT_PAD_1);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , I2S_MIXER_API_MODULE_NAME , &app_I2S_mixer);
 
+	DSP_CREATE_MODULE_TO_CHAIN_OUTPUT_LINK(pMain_dsp_chain, DSP_OUTPUT_PAD_0, &app_I2S_mixer, DSP_OUTPUT_PAD_0);
 
 	return 0;
 }
