@@ -16,7 +16,7 @@
 
 #include "os_wrapper.h"
 
-extern float cutoff_freq ;
+extern float cutoff_freq_low ;
 extern os_mutex_t  control_mutex;
 
 
@@ -46,7 +46,7 @@ int do_set_vbf (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 
 
-	cutoff_freq = (float)atof(argv[1]);
+	cutoff_freq_low = (float)atof(argv[1]);
 
 	os_mutex_take_infinite_wait(control_mutex);
 

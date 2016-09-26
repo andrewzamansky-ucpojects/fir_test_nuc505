@@ -16,13 +16,16 @@
 
 extern dsp_descriptor_t vb;
 extern dsp_descriptor_t lpf_filter;
-extern dsp_descriptor_t vb_final_filter;
 extern dsp_descriptor_t hpf_filter_left;
 extern dsp_descriptor_t hpf_filter_right;
 
+
+extern dsp_descriptor_t mpf_filter_left;
+extern dsp_descriptor_t mpf_filter_right;
+
 extern dsp_descriptor_t stereo_to_mono;
 extern dsp_descriptor_t limiter;
-extern dsp_descriptor_t voice_3d;
+extern dsp_descriptor_t hpf_voice_3d;
 
 extern uint8_t loopback ;
 extern os_mutex_t  control_mutex;
@@ -118,6 +121,19 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			dsp_management_api_set_module_control(&hpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_ON);
 		}
 	}
+	else if(0 == strcmp(argv[1],"mf_path"))
+	{
+		if(0 == val)
+		{
+			dsp_management_api_set_module_control(&mpf_filter_left , DSP_MANAGEMENT_API_MODULE_CONTROL_MUTE);
+			dsp_management_api_set_module_control(&mpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_MUTE);
+		}
+		else
+		{
+			dsp_management_api_set_module_control(&mpf_filter_left , DSP_MANAGEMENT_API_MODULE_CONTROL_ON);
+			dsp_management_api_set_module_control(&mpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_ON);
+		}
+	}
 	else if(0 == strcmp(argv[1],"limiter"))
 	{
 		if(0 == val)
@@ -133,11 +149,11 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	{
 		if(0 == val)
 		{
-			dsp_management_api_set_module_control(&voice_3d , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
+			dsp_management_api_set_module_control(&hpf_voice_3d , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 		}
 		else
 		{
-			dsp_management_api_set_module_control(&voice_3d , DSP_MANAGEMENT_API_MODULE_CONTROL_ON);
+			dsp_management_api_set_module_control(&hpf_voice_3d , DSP_MANAGEMENT_API_MODULE_CONTROL_ON);
 		}
 	}
 	else if (0 == strcmp(argv[1],"s2m"))
@@ -151,12 +167,6 @@ int do_ctl (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	{
 		dsp = &vb;
 		SHELL_REPLY_STR("vb -> ");
-		do_ctl_aux(dsp, val);
-	}
-	else if (0 == strcmp(argv[1],"vb_f"))
-	{
-		dsp = &vb_final_filter;
-		SHELL_REPLY_STR("vb_final -> ");
 		do_ctl_aux(dsp, val);
 	}
 	else if (0 == strcmp(argv[1],"lpf"))

@@ -16,7 +16,7 @@
 #include "voice_3D_api.h"
 #include "os_wrapper.h"
 
-extern dsp_descriptor_t voice_3d;
+extern dsp_descriptor_t hpf_voice_3d;
 extern os_mutex_t  control_mutex;
 
 
@@ -45,7 +45,7 @@ int do_set_centeri (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	os_mutex_take_infinite_wait(control_mutex);
 
 	gain = (float)atof(argv[1]);
-	DSP_IOCTL_1_PARAMS(&voice_3d , IOCTL_VOICE_3D_SET_MEDIUM_GAIN , &gain );
+	DSP_IOCTL_1_PARAMS(&hpf_voice_3d , IOCTL_VOICE_3D_SET_MEDIUM_GAIN , &gain );
 
 	os_mutex_give(control_mutex);
 

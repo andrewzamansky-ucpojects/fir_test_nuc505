@@ -139,18 +139,18 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 		dsp_pad_t *in_pads[MAX_NUM_OF_OUTPUT_PADS] , dsp_pad_t out_pads[MAX_NUM_OF_OUTPUT_PADS])
 {
 
-	volatile float *apCh1In ;
-	volatile float *apCh1Out  ;
-	volatile float curr_ratio ;
+	float *apCh1In ;
+	float *apCh1Out  ;
+	float curr_ratio ;
 	VIRTUAL_BASS_Instance_t *handle;
-	volatile float harmonic_out;
-	volatile float *tmp_in_buf;
-	volatile float *tmp_out_buf;
+	float harmonic_out;
+	float *tmp_in_buf;
+	float *tmp_out_buf;
 	uint16_t i;
 
 //	uint8_t envelope_folower_sample_count =ENVELOP_FOLLOWER_SAMPLE_RATE;
-	volatile float envelope_folower;
-	volatile float curr_y,curr_x;
+	float envelope_folower;
+	float curr_y,curr_x;
 
 	handle = apdsp->handle;
 	envelope_folower = handle->envelope_folower ;
