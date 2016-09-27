@@ -13,10 +13,11 @@
 
 #include "dsp_management_api.h"
 #include "os_wrapper.h"
+#include "virtual_bass_api.h"
 
-extern float vb_volume ;
 
 extern os_mutex_t  control_mutex;
+extern dsp_descriptor_t vb;
 
 /*
  * Subroutine:  do_set_comressor
@@ -32,6 +33,7 @@ int do_set_vbi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
 
+	float vb_volume ;
 
 	if(argc < 2)
 	{
@@ -39,11 +41,12 @@ int do_set_vbi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return 1;
 	}
 
-	// should be transformed to ioctls !!
 
 	os_mutex_take_infinite_wait(control_mutex);
 
 	vb_volume = (float)atof(argv[1]) ;
+	DSP_IOCTL_1_PARAMS(&vb , IOCTL_VIRTUAL_BASS_SET_GAIN , &vb_volume  );
+
 	PRINTF_DBG("vb_volume = %f\n",vb_volume);
 	os_mutex_give(control_mutex);
 

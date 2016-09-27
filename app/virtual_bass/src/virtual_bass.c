@@ -114,7 +114,7 @@ float log2f_approx(float X)
 #define COMPR_REALESE	0.2f
 #define  ONE_MINUS_COMPR_REALESE	(1.0f - COMPR_REALESE)
 #define RATIO			3.2f
-float vb_volume = 20;
+//float vb_volume = 20;
 float volatile mon ;
 
 dsp_descriptor_t first_filter;
@@ -151,10 +151,27 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 //	uint8_t envelope_folower_sample_count =ENVELOP_FOLLOWER_SAMPLE_RATE;
 	float envelope_folower;
 	float curr_y,curr_x;
+	float 	hu_1_B;
+	float	hu_1_A;
+	float 	threshold;
+	float	attack;
+	float	one_minus_attack;
+	float	release;
+	float	one_minus_release;
+	float	gain;
 
 	handle = apdsp->handle;
 	envelope_folower = handle->envelope_folower ;
 	harmonic_out = handle->harmonic_out ;
+
+	hu_1_B = handle->hu_1_B;
+	hu_1_A = handle->hu_1_A;
+	threshold = handle->threshold;
+	attack = handle->attack;
+	one_minus_attack = handle->one_minus_attack;
+	release = handle->release;
+	one_minus_release = handle->one_minus_release;
+	gain = handle->gain;
 
 	apCh1In = in_pads[0]->buff;
 	apCh1Out = out_pads[0].buff;
@@ -170,11 +187,11 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 
 		if(curr_x < harmonic_out  )
 		{
-			tmp = HU1_B_ADJUSTED;
+			tmp = hu_1_B;
 		}
 		else
 		{
-			tmp = HU1_A_ADJUSTED;
+			tmp = hu_1_A;
 		}
 		harmonic_out *= (1.0f-tmp);
 		tmp *=  curr_x ;
@@ -213,21 +230,21 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 
 
 		delta = 1;
-		if(curr_x_abs > THRESHOLD)
+		if(curr_x_abs > threshold)
 		{
-			delta = THRESHOLD / curr_x_abs;
+			delta = threshold / curr_x_abs;
 		}
 //		mon = delta;
 
 		if(delta > envelope_folower)
 		{
-			envelope_folower *= COMPR_ATTACK ;
-			tmp = delta * ONE_MINUS_COMPR_ATTACK ;
+			envelope_folower *= attack ;
+			tmp = delta * one_minus_attack ;
 		}
 		else
 		{
-			envelope_folower *= COMPR_REALESE ;
-			tmp = delta * ONE_MINUS_COMPR_REALESE ;
+			envelope_folower *= release ;
+			tmp = delta * one_minus_release ;
 		}
 		envelope_folower += tmp ;
 
@@ -235,7 +252,7 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 //		mon = envelope_folower;
 
 #if 0
-		tmp = delta /2;
+		tmp = delta /2.0f;
 		tmp = RATIO - tmp;
 #else
 		tmp = RATIO;
@@ -244,13 +261,13 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 		{
 			while(1);
 		}
-		tmp = 1/tmp;
+		tmp = 1.0f/tmp;
 
 		if(0==envelope_folower)
 		{
 			while(1);
 		}	//	mon = tmp;
-		envelope_folower = 1 / envelope_folower;
+		envelope_folower = 1.0f / envelope_folower;
 
 
 		curr_ratio = fast_pow(envelope_folower , tmp);
@@ -259,7 +276,7 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 		curr_ratio = 1;
 #endif
 		curr_y = curr_x * curr_ratio;
-		curr_y *= vb_volume;
+		curr_y *= gain;
 		*tmp_out_buf++ = curr_y;
 	}
 #else
@@ -309,6 +326,15 @@ uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , voi
 
 			handle->envelope_folower = 1 ;
 			handle->harmonic_out = 0 ;
+
+			handle->hu_1_B = HU1_B_ADJUSTED;
+			handle->hu_1_A = HU1_A_ADJUSTED;
+			handle->threshold = THRESHOLD;
+			handle->attack = COMPR_REALESE;
+			handle->one_minus_attack = ONE_MINUS_COMPR_ATTACK ;
+			handle->release = COMPR_REALESE;
+			handle->one_minus_release = ONE_MINUS_COMPR_REALESE;
+			handle->gain = 20;
 
 			/*  first dsp chain*/
 			first_dsp_chain = DSP_CREATE_CHAIN(2);
@@ -365,7 +391,9 @@ uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , voi
 			DSP_IOCTL_1_PARAMS(&second_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
 
 			break ;
-
+		case IOCTL_VIRTUAL_BASS_SET_GAIN :
+			handle->gain = *(float*)aIoctl_param1;
+			break;
 		default :
 			return 1;
 	}
