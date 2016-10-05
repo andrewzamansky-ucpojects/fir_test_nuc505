@@ -28,7 +28,7 @@
 #endif
 
 #define DEBUG
-#include "gpio_api.h"
+//#include "gpio_api.h"
 #include "equalizer_api.h"
 
 /********  defines *********************/
@@ -251,16 +251,8 @@ void virtual_bass_dsp(pdsp_descriptor apdsp , size_t data_len ,
 
 //		mon = envelope_folower;
 
-#if 0
-		tmp = delta /2.0f;
-		tmp = RATIO - tmp;
-#else
 		tmp = RATIO;
-#endif
-		if(0==tmp)
-		{
-			while(1);
-		}
+
 		tmp = 1.0f/tmp;
 
 		if(0==envelope_folower)
@@ -338,16 +330,18 @@ uint8_t virtual_bass_ioctl(pdsp_descriptor apdsp ,const uint8_t aIoctl_num , voi
 
 			/*  first dsp chain*/
 			first_dsp_chain = DSP_CREATE_CHAIN(2);
-			DSP_CREATE_CHAIN_INPUT_TO_MODULE_LINK(first_dsp_chain,DSP_INPUT_PAD_0,&first_filter,DSP_INPUT_PAD_0);
-			DSP_ADD_MODULE_TO_CHAIN(first_dsp_chain , EQUALIZER_API_MODULE_NAME ,&first_filter );
+			DSP_ADD_MODULE_TO_CHAIN(first_dsp_chain, EQUALIZER_API_MODULE_NAME, &first_filter);
+
+			DSP_CREATE_CHAIN_INPUT_TO_MODULE_LINK(first_dsp_chain, DSP_INPUT_PAD_0, &first_filter, DSP_INPUT_PAD_0);
 			DSP_CREATE_MODULE_TO_CHAIN_OUTPUT_LINK(first_dsp_chain, DSP_OUTPUT_PAD_0, &first_filter, DSP_OUTPUT_PAD_0);
 
 			DSP_IOCTL_1_PARAMS(&first_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
 
 			/*  second dsp chain*/
 			second_dsp_chain = DSP_CREATE_CHAIN(2);
-			DSP_CREATE_CHAIN_INPUT_TO_MODULE_LINK(second_dsp_chain,DSP_INPUT_PAD_0,&second_filter,DSP_INPUT_PAD_0);
-			DSP_ADD_MODULE_TO_CHAIN(second_dsp_chain , EQUALIZER_API_MODULE_NAME ,&second_filter );
+			DSP_ADD_MODULE_TO_CHAIN(second_dsp_chain, EQUALIZER_API_MODULE_NAME, &second_filter);
+
+			DSP_CREATE_CHAIN_INPUT_TO_MODULE_LINK(second_dsp_chain, DSP_INPUT_PAD_0, &second_filter, DSP_INPUT_PAD_0);
 			DSP_CREATE_MODULE_TO_CHAIN_OUTPUT_LINK(second_dsp_chain, DSP_OUTPUT_PAD_0, &second_filter, DSP_OUTPUT_PAD_0);
 
 			DSP_IOCTL_1_PARAMS(&second_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 3 );
