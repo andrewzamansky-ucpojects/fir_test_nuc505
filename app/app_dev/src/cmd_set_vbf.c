@@ -11,7 +11,7 @@
 #include "u-boot/include/command.h"
 #include "shell_api.h"
 
-#include "equalizer_api.h"
+#include "biquad_filter_api.h"
 #include "common_dsp_api.h"
 
 #include "os_wrapper.h"

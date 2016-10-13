@@ -24,7 +24,7 @@
 #include "os_wrapper.h"
 
 #include "dsp_management_api.h"
-#include "equalizer_api.h"
+#include "biquad_filter_api.h"
 #include "mixer_api.h"
 #include "mixer2x1_api.h"
 #include "mixer3x1_api.h"
@@ -238,28 +238,28 @@ static uint8_t app_dev_create_signal_flow()
 
 	/******** LF path modules**********/
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, MIXER2X1_API_MODULE_NAME, &stereo_to_mono);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, EQUALIZER_API_MODULE_NAME, &lpf_filter);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, BIQUAD_FILTER_API_MODULE_NAME, &lpf_filter);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, VIRTUAL_BASS_API_MODULE_NAME, &vb);
 	/********* end of LF path    **********/
 
 	/******** HF path modules**********/
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, EQUALIZER_API_MODULE_NAME, &hpf_filter_left);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, EQUALIZER_API_MODULE_NAME, &hpf_filter_right);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, BIQUAD_FILTER_API_MODULE_NAME, &hpf_filter_left);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, BIQUAD_FILTER_API_MODULE_NAME, &hpf_filter_right);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, VOICE_3D_API_MODULE_NAME, &hpf_voice_3d);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, STANDARD_COMPRESSOR_API_MODULE_NAME, &compressor_hf);
 	/********* end of HF path    **********/
 
 	/******** MF path modules**********/
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, EQUALIZER_API_MODULE_NAME, &mpf_filter_left);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, EQUALIZER_API_MODULE_NAME, &mpf_filter_right);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, BIQUAD_FILTER_API_MODULE_NAME, &mpf_filter_left);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, BIQUAD_FILTER_API_MODULE_NAME, &mpf_filter_right);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, VOICE_3D_API_MODULE_NAME, &mpf_voice_3d);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, STANDARD_COMPRESSOR_API_MODULE_NAME, &compressor_mf);
 	/********* end of MF path    **********/
 
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, MIXER3X1_API_MODULE_NAME, &adder_bass_with_left_channel);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, MIXER3X1_API_MODULE_NAME, &adder_bass_with_right_channel);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, EQUALIZER_API_MODULE_NAME, &leftChanelEQ);
-	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, EQUALIZER_API_MODULE_NAME, &rightChanelEQ);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, BIQUAD_FILTER_API_MODULE_NAME, &leftChanelEQ);
+	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain, BIQUAD_FILTER_API_MODULE_NAME, &rightChanelEQ);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , LOOKAHEAD_COMPRESSOR_API_MODULE_NAME , &limiter);
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , I2S_MIXER_API_MODULE_NAME , &app_I2S_mixer);
 
@@ -355,8 +355,8 @@ static uint8_t app_dev_create_signal_flow()
 /*---------------------------------------------------------------------------------------------------------*/
 uint8_t app_dev_set_cuttof()
 {
-	equalizer_api_band_set_t band_set;
-	equalizer_api_band_set_params_t  *p_band_set_params;
+	biquad_filter_api_band_set_t band_set;
+	biquad_filter_api_band_set_params_t  *p_band_set_params;
 	float freq;
 
 	p_band_set_params = &band_set.band_set_params;
@@ -367,39 +367,39 @@ uint8_t app_dev_set_cuttof()
 	p_band_set_params->QValue = 1;//0.836;//0.707;
 	p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_1_POLE;
 	band_set.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 
 	p_band_set_params->Fc = cutoff_freq_low;
 	p_band_set_params->QValue = 1;//0.836;//0.707;
 	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
 	band_set.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	DSP_IOCTL_1_PARAMS(&mpf_filter_right, IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&mpf_filter_right, IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
 	band_set.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	DSP_IOCTL_1_PARAMS(&mpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&mpf_filter_right , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 	p_band_set_params->Fc = cutoff_freq_high;
 	p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
 	p_band_set_params->QValue = 0.707;//0.836;//0.707;
 	band_set.band_num = 2;
-	DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	DSP_IOCTL_1_PARAMS(&mpf_filter_right, IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&mpf_filter_right, IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 	p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
 	band_set.band_num = 3;
-	DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	DSP_IOCTL_1_PARAMS(&mpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&mpf_filter_right , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 
 
 	p_band_set_params->Fc = cutoff_freq_high;
 	p_band_set_params->QValue = 0.707;//0.836;//0.707;
 	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
 	band_set.band_num = 0;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	DSP_IOCTL_1_PARAMS(&hpf_filter_right, IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&hpf_filter_right, IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 	band_set.band_num = 1;
-	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
-	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
+	DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 
 	freq = 100;
 	DSP_IOCTL_1_PARAMS(&vb , IOCTL_VIRTUAL_BASS_SET_FIRST_HPF, &cutoff_freq_low  );
@@ -410,15 +410,15 @@ uint8_t app_dev_set_cuttof()
 //	p_band_set_params->Fc = cutoff_freq_low * 3.4;
 //	p_band_set_params->filter_mode = BIQUADS_LOWPASS_MODE_2_POLES;
 //	band_set.band_num = 0;
-//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 //	p_band_set_params->Fc = cutoff_freq_low * 0.2;
 //	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_1_POLE;
 //	band_set.band_num = 1;
-//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 //	p_band_set_params->QValue = 1;//0.836;//0.707;
 //	p_band_set_params->filter_mode = BIQUADS_HIGHPASS_MODE_2_POLES;
 //	band_set.band_num = 2;
-//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_EQUALIZER_SET_BAND_BIQUADS, &band_set );
+//	DSP_IOCTL_1_PARAMS(&vb_final_filter , IOCTL_BIQUAD_FILTER_SET_BAND_BIQUADS, &band_set );
 
 
 	return 0;
@@ -467,7 +467,7 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 			DSP_IOCTL_1_PARAMS(&stereo_to_mono , IOCTL_MIXER_SET_CHANNEL_WEIGHT , &ch_weight  );
 			//dsp_management_api_set_module_control(&stereo_to_mono , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
-			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 1 );
+			DSP_IOCTL_1_PARAMS(&lpf_filter , IOCTL_BIQUAD_FILTER_SET_NUM_OF_BANDS , 1 );
 			dsp_management_api_set_module_control(&lpf_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 			//dsp_management_api_set_module_control(&lpf_filter , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
@@ -476,8 +476,8 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 
 
 			/**************   HPF path  *************/
-			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 2 );
-			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 2 );
+			DSP_IOCTL_1_PARAMS(&hpf_filter_left , IOCTL_BIQUAD_FILTER_SET_NUM_OF_BANDS , 2 );
+			DSP_IOCTL_1_PARAMS(&hpf_filter_right , IOCTL_BIQUAD_FILTER_SET_NUM_OF_BANDS , 2 );
 //			dsp_management_api_set_module_control(&hpf_filter_left , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 //			dsp_management_api_set_module_control(&hpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
@@ -491,8 +491,8 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 			//dsp_management_api_set_module_control(&compressor_hf , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
 			/**************   MPF path  *************/
-			DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 4 );
-			DSP_IOCTL_1_PARAMS(&mpf_filter_right , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 4 );
+			DSP_IOCTL_1_PARAMS(&mpf_filter_left , IOCTL_BIQUAD_FILTER_SET_NUM_OF_BANDS , 4 );
+			DSP_IOCTL_1_PARAMS(&mpf_filter_right , IOCTL_BIQUAD_FILTER_SET_NUM_OF_BANDS , 4 );
 //			dsp_management_api_set_module_control(&mpf_filter_left , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 //			dsp_management_api_set_module_control(&mpf_filter_right , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
@@ -524,8 +524,8 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 
 
 			     /*    eq filters   */
-			DSP_IOCTL_1_PARAMS(&leftChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS ,7 );
-			DSP_IOCTL_1_PARAMS(&rightChanelEQ , IOCTL_EQUALIZER_SET_NUM_OF_BANDS , 7);
+			DSP_IOCTL_1_PARAMS(&leftChanelEQ , IOCTL_BIQUAD_FILTER_SET_NUM_OF_BANDS ,7 );
+			DSP_IOCTL_1_PARAMS(&rightChanelEQ , IOCTL_BIQUAD_FILTER_SET_NUM_OF_BANDS , 7);
 			//dsp_management_api_set_module_control(&leftChanelEQ , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 			//dsp_management_api_set_module_control(&rightChanelEQ , DSP_MANAGEMENT_API_MODULE_CONTROL_BYPASS);
 
