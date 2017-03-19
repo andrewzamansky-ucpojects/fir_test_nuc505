@@ -187,7 +187,8 @@ static void main_thread_func (void * aHandle)
 static uint8_t app_dev_create_signal_flow()
 {
 
-	pMain_dsp_chain = DSP_CREATE_CHAIN(18);
+	dsp_buffers_pool = memory_pool_init(7 , I2S_BUFF_LEN * sizeof(float));
+	pMain_dsp_chain = DSP_CREATE_CHAIN(10 , dsp_buffers_pool);
 
 	DSP_ADD_MODULE_TO_CHAIN(pMain_dsp_chain , I2S_SPLITTER_API_MODULE_NAME ,&app_I2S_spliter );
 
@@ -263,8 +264,6 @@ uint8_t app_dev_ioctl( pdev_descriptor_t apdev ,const uint8_t aIoctl_num
 
 			/* Create an application thread */
 
-			dsp_buffers_pool = memory_pool_init(7 , I2S_BUFF_LEN * sizeof(float));
-			dsp_management_api_set_buffers_pool(dsp_buffers_pool);
 
 			app_dev_create_signal_flow();
 

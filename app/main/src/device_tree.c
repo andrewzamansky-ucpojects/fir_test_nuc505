@@ -108,13 +108,26 @@
 
 
 /***********************************/
+/********** timer_dev ********/
+#define DT_DEV_NAME							timer_dev
+#define DT_DEV_MODULE						timer_wrapper
+
+#define	TIMER_WRAPPER_DT_HW_TIMER_PDEV				systick_dev
+
+#include ADD_CURRENT_DEV
+
+
+/***********************************/
 /********** i2s_dev ********/
 #define DT_DEV_NAME							i2s_dev
 #define DT_DEV_MODULE						I2S_nuc505
 
+#define	I2S_NUC505_DT_MASTER_OR_SLAVE_MODE		I2S_NUC505_API_MASTER_MODE
+#define I2S_NUC505_DT_SAMPLE_RATE				48000
 #define I2S_NUC505_DT_NUM_OF_WORDS_IN_BUFFER	I2S_BUFF_LEN
 #define I2S_NUC505_DT_NUM_OF_BYTES_IN_WORD		NUM_OF_BYTES_PER_AUDIO_WORD
 #define I2S_NUC505_DT_CALLBACK_PDEV				app_dev
+#define I2S_NUC505_DT_TIMER_PDEV				timer_dev
 
 #include ADD_CURRENT_DEV
 

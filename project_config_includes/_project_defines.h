@@ -29,6 +29,7 @@
 #define LATENCY_LENGTH		64
 #define	NUM_OF_BYTES_PER_AUDIO_WORD		2// 2- 16bits , 4- 32bits
 
+#define CRITICAL_ERROR(str)   while(1);
 
 
 /******   task priorities *********/
